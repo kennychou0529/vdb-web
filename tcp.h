@@ -213,7 +213,6 @@ int tcp_recv(void *buffer, uint32_t capacity)
 
 void tcp_close()
 {
-    assert(tcp_init);
     if (!tcp_init)
     {
         return;
