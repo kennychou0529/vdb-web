@@ -230,3 +230,18 @@ void tcp_close()
 #else
 #error "Not implemented yet"
 #endif
+
+// Reads bytes from the stream until 'size' bytes has been accumulated into 'buffer'
+// Returns false if the connection was closed.
+bool tcp_recv_message(void *buffer, uint32_t size)
+{
+    uint32_t accumulated = 0;
+    while (accumulated < size)
+    {
+        int result = tcp_recv((char*)buffer + accumulated, size-accumulated);
+        if (result == tcp_connection_closed)
+            return false;
+        accumulated += result;
+    }
+    return true;
+}
