@@ -1,0 +1,126 @@
+Flowcontrol
+............................................................
+
+interactive mode:
+    Will block until client connects
+
+stream mode:
+    Will not block until client connects
+    Browser can specify which figure to view
+    (Then server needs to send a list of all labels!!)
+
+    while (vdb_break()) { }
+    vdb_begin()/vdb_end()
+
+Todo
+............................................................
+
+google svg icons: https://material.io/icons/#ic_mode_comment
+
+https://tools.ietf.org/html/rfc6455#section-5.4
+
+o server: vdb_text
+o server: vdb_lines, vdb_points modes
+o server: vdb_color (non-indexed)
+o server/browser: interactive
+    - keypresses, keyholds, keyups
+o browser: user-defined interface sidebar
+
+o brower: performance
+    - Dynamic quality (toggle nice points or square points)
+    https://hacks.mozilla.org/2009/06/pushing-pixels-with-canvas/
+    http://stackoverflow.com/questions/7812514/drawing-a-dot-on-html5-canvas
+
+o browser: idle anim
+    https://projects.lukehaas.me/css-loaders/
+    http://imgur.com/gallery/s7N6N
+
+o browser: 60fps + animations; don't just render on message
+    - smooth camera motion
+    - https://www.html5rocks.com/en/tutorials/canvas/performance/#toc-raf
+
+o browser: dynamic viewport and canvas size
+    https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html
+
+o server:
+    send_thread should be able to check if the work-buffer is ready to be sent
+    (cause it might not have been signalled to be sent because send_thread was
+    busy, and it might take a long time before it can be signalled again).
+
+o server: fix bug in tcp_close(); valid socket handles might be zero
+o server: Receive large messages (accumulate, until FIN)
+o server: Send endianness
+    Should be able to discern this based on TYPE byte in sent cmd list
+
+o browser: Hide or show axes
+o browser: Set canvas width height programmatically?
+o browser: Handle disconnect 'cleanly'?
+    https://tools.ietf.org/html/rfc6455#section-7.1.1
+
+o browser: Pausing in stream mode
+    - Do not pause execution in user program
+o browser: Scroll back frames in history
+
+o browser: Different projection models
+    - Equidistant
+    - Pinhole (with Brown-Conrady distortion)
+    - Render smooth lines with binary-search (measure curvature)
+
+o server: namespaces
+    namespace socket
+    {
+        #include <winsock.h>
+    }
+    #pragma comment(lib, "wsock32.lib")
+
+    int main()
+    {
+        socket::send();
+
+        socket::Sleep(1000);
+    }
+
+
+Ideas
+............................................................
+
+Todo:
+    o Logging console
+    o Draw geometry that is sent over TCP (from server)
+    o Modify variables in server through sliders, buttons, etc (html)
+    o Graphs? svg graphs...?
+    o Camera in client (ortho, 3D sphere, autoresize?)
+
+    o Labels
+        Can't afford to send labels per piece of data.
+        Maybe 'request' a label? Ask server to look-up Hough table, for example.
+
+    o Breakpoint-mode
+        Program flow is temporarily limited to a vdb_block
+        vdb_begin()
+        {
+            static float x = 0.0f;
+            vdb_slider1f("x", &x, -1.0f, +1.0f);
+
+            vdb_ortho();
+            vdb_clear();
+            vdb_line(x1, y1, x2, y2);
+            vdb_linep(x1, y1);
+            vdb_linep(x2, y2);
+            vdb_note(x, y, "%s: %d", ...);
+            ...
+        }
+        vdb_end()
+
+    o Streaming-mode
+        The vdb block is optionally executed if bandwidth allows it.
+        The update rate could also be controlled by the caller?
+        Program flow is not halted.
+        Block is not executed atleast until the data has been shown in the client.
+        vdb_begin();
+        {
+            vdb_ortho(...);
+            vdb_image(...);
+        }
+        vdb_end();
+

@@ -1,0 +1,20 @@
+<html>
+<head>
+    <title>vdebug</title>
+    <link rel="stylesheet" href="app_bright.css">
+</head>
+<body onload="ws_connect()">
+    <div id="container">
+        <canvas width="640" height="480" id="canvas"></canvas>
+        <label for="camera_projection">Camera</label>
+        <select name="camera_projection">
+          <option value="audi">2D</option>
+          <option value="volvo">3D (standard)</option>
+          <option value="saab">3D (equidistant)</option>
+          <option value="mercedes">3D (orthographic)</option>
+        </select>
+        <a class="button" style="float:right;" href="javascript:ws_shutdown_server()">Shutdown</a>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
