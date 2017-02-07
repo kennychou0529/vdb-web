@@ -10,14 +10,10 @@ struct vdb_msg_t
     int opcode;
 };
 
-int vdb_extract_user_key(const char *request, int request_len, char *key);
-int vdb_generate_accept_key(const char *request, int request_len, char *accept_key);
-int vdb_send_handshake(const char *request, int request_len);
-int vdb_wait_for_handshake();
+int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length);
 int vdb_self_test();
-void vdb_print_bytes(void *recv_buffer, int n);
-int vdb_send_message(const void *data, int length);
-int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg);
+void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
+int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
 
@@ -106,7 +102,7 @@ int vdb_generate_accept_key(const char *request, int request_len, char *accept_k
     return 1;
 }
 
-int vdb_send_handshake(const char *request, int request_len)
+int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length)
 {
     char accept_key[1024];
     char response[1024];
@@ -119,16 +115,8 @@ int vdb_send_handshake(const char *request, int request_len)
         "Sec-WebSocket-Accept: %s\r\n\r\n",
         accept_key
     );
-    vdb_assert(tcp_send(response, response_len)); // @ error codes from tcp
-    return 1;
-}
-
-int vdb_wait_for_handshake()
-{
-    static char request[1024];
-    int request_len = tcp_recv(request, sizeof(request)); // @ error codes from tcp
-    vdb_assert(request_len > 0); // @ error codes from tcp
-    vdb_assert(vdb_send_handshake(request, request_len));
+    *out_response = response;
+    *out_length = response_len;
     return 1;
 }
 
@@ -165,7 +153,7 @@ void vdb_print_bytes(void *recv_buffer, int n)
     }
 }
 
-int vdb_send_message(const void *data, int length)
+void vdb_form_frame(int length, unsigned char **out_frame, int *out_length)
 {
     unsigned char frame[16] = {0};
     int frame_length = 0;
@@ -199,12 +187,11 @@ int vdb_send_message(const void *data, int length)
             frame_length = 10;
         }
     }
-    vdb_assert(tcp_send(frame, frame_length));
-    vdb_assert(tcp_send(data, length));
-    return 1;
+    *out_frame = frame;
+    *out_length = frame_length;
 }
 
-int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg)
+int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
 {
     // https://tools.ietf.org/html/rfc6455#section-5.4
     // Note: WebSocket does not send fields unless
@@ -213,49 +200,51 @@ int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg)
     // len.
     int i = 0;
     unsigned char key[4] = {0};
-    uint32_t opcode = ((recv_buffer[i  ] >> 0) & 0xF);
-    uint32_t fin    = ((recv_buffer[i++] >> 7) & 0x1);
-    uint64_t len    = ((recv_buffer[i  ] >> 0) & 0x7F);
-    uint32_t mask   = ((recv_buffer[i++] >> 7) & 0x1);
+    unsigned char *frame = (unsigned char*)recv_buffer;
+    vdb_assert(i + 2 <= received);
+    uint32_t opcode = ((frame[i  ] >> 0) & 0xF);
+    uint32_t fin    = ((frame[i++] >> 7) & 0x1);
+    uint64_t len    = ((frame[i  ] >> 0) & 0x7F);
+    uint32_t mask   = ((frame[i++] >> 7) & 0x1);
     vdb_assert(mask == 1); // client messages must be masked
     if (len == 126)
     {
         vdb_assert(i + 2 <= received);
         len = 0;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++];
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++];
     }
     else if (len == 127)
     {
         vdb_assert(i + 8 <= received);
         len = 0;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++]; len <<= 8;
-        len |= recv_buffer[i++];
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++]; len <<= 8;
+        len |= frame[i++];
     }
 
     vdb_assert(len <= (uint64_t)received); // len must fit inside an int
     vdb_assert(i + 4 <= received);
-    key[0] = recv_buffer[i++];
-    key[1] = recv_buffer[i++];
-    key[2] = recv_buffer[i++];
-    key[3] = recv_buffer[i++];
+    key[0] = frame[i++];
+    key[1] = frame[i++];
+    key[2] = frame[i++];
+    key[3] = frame[i++];
 
     // decode payload
     {
         int j = 0;
         vdb_assert(i + (int)len <= received);
         for (j = 0; j < (int)len; j++)
-            recv_buffer[i+j] = recv_buffer[i+j] ^ key[j % 4];
-        recv_buffer[i+len] = 0;
+            frame[i+j] = frame[i+j] ^ key[j % 4];
+        frame[i+len] = 0;
     }
 
-    msg->payload = (char*)(recv_buffer + i);
+    msg->payload = (char*)(frame + i);
     msg->length = (int)len;
     msg->opcode = (int)opcode;
     msg->fin = (int)fin;
@@ -264,7 +253,7 @@ int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg)
     {
         #if 0
         printf("[vdb] received %d bytes, first ten are:\n", received);
-        vdb_print_bytes(recv_buffer, 10);
+        vdb_print_bytes(frame, 10);
         printf("fin :\t%u\n", fin);
         printf("code:\t%u\n", opcode);
         printf("mask:\t%u\n", mask);

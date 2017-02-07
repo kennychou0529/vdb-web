@@ -2,8 +2,9 @@
 <head>
     <title>vdebug</title>
     <link rel="stylesheet" href="app_bright.css">
+    <script src="app.js"></script>
 </head>
-<body onload="ws_connect()">
+<body onload="app_onload()">
     <div id="container">
         <canvas width="640" height="480" id="canvas"></canvas>
         <label for="camera_projection">Camera</label>
@@ -15,6 +16,5 @@
         </select>
         <a class="button" style="float:right;" href="javascript:ws_shutdown_server()">Shutdown</a>
     </div>
-    <script src="app.js"></script>
 </body>
 </html>

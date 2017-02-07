@@ -1,6 +1,6 @@
 var ws = 0;
-var cvs = document.getElementById("canvas");
-var ctx = canvas.getContext("2d");
+var cvs = 0;
+var ctx = 0;
 
 // function doc_onkeydown(e)
 // {
@@ -18,7 +18,7 @@ function ws_onmessage(e)
     // @ negotiate endianness with server
     var little_endian = true;
     var view = new DataView(e.data);
-    var count = view.getUint16(0, little_endian);
+    var count = view.getInt32(0, little_endian);
 
     ctx.fillStyle="#AA4949";
     ctx.fillRect(0, 0, cvs.width, cvs.height);
@@ -28,7 +28,7 @@ function ws_onmessage(e)
     // ctx.strokeStyle = "#000000";
     ctx.beginPath();
 
-    for (let i = 0; i < count; i++)
+    for (var i = 0; i < count; i++)
     {
         var x_ndc = view.getFloat32(2 + 4*(2*i+0), little_endian);
         var y_ndc = view.getFloat32(2 + 4*(2*i+1), little_endian);
@@ -60,6 +60,16 @@ function ws_connect()
     ws.onclose = function()
     {
         console.log("Socket closed");
+    }
+}
+
+function app_onload()
+{
+    var cvs = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    if (ws == 0)
+    {
+        ws_connect();
     }
 }
 

@@ -19,7 +19,7 @@ void vdb_sleep(int milliseconds);
 
 // implementation
 #define vdb_assert(EXPR) if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; }
-#define vdb_logd(...) { printf("[vdb] l%d in %s: ", __LINE__, __FILE__); printf(__VA_ARGS__); }
+#define vdb_log(...) { printf("[vdb] %s@L%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); }
 #include "tcp.c"
 #include "websocket.c"
 #if defined(_WIN32) || defined(_WIN64)

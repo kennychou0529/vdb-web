@@ -4,12 +4,12 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-int tcp_listen(int listen_port)
+int tcp_listen(int listen_port, int *out_listen_socket)
 {
     struct addrinfo *a = 0;
     struct addrinfo *info = 0;
     struct addrinfo hints = {0};
-    has_listen_socket = 0;
+    int listen_socket = 0;
 
     char listen_port_str[64];
     sprintf(listen_port_str, "%d", listen_port);
@@ -52,36 +52,25 @@ int tcp_listen(int listen_port)
             close(listen_socket);
             return 0;
         }
-        has_listen_socket = 1;
         break;
     }
     freeaddrinfo(info);
-    return has_listen_socket;
-}
-
-int tcp_accept()
-{
-    has_client_socket = 0;
-    if (!has_listen_socket)
-    {
-        printf("[vdb] Error. The programmer forgot to ensure that a TCP listen socket exists before calling tcp_accept.\n");
-        return 0;
-    }
-    client_socket = accept(listen_socket, 0, 0);
-    if (client_socket == -1)
-        return 0;
-    has_client_socket = 1;
+    *out_listen_socket = listen_socket;
     return 1;
 }
 
-int tcp_close()
+int tcp_accept(int listen_socket, int *out_client_socket)
 {
-    if (has_listen_socket)
-        close(listen_socket);
-    if (has_client_socket)
-        close(client_socket);
-    has_client_socket = 0;
-    has_listen_socket = 0;
+    int client_socket = accept(listen_socket, 0, 0);
+    if (client_socket == -1)
+        return 0;
+    *out_client_socket = client_socket;
+    return 1;
+}
+
+int tcp_close(int s)
+{
+    close(s);
     return 1;
 }
 
