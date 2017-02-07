@@ -19,6 +19,12 @@ google svg icons: https://material.io/icons/#ic_mode_comment
 
 https://tools.ietf.org/html/rfc6455#section-5.4
 
+o server: bug in windows; calling accept multiple times!
+
+o server: SO_REUSEADDR
+
+o server/browser: hton and ntoh?
+
 o server: vdb_text
 o server: vdb_lines, vdb_points modes
 o server: vdb_color (non-indexed)
