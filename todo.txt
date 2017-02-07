@@ -20,7 +20,7 @@ google svg icons: https://material.io/icons/#ic_mode_comment
 https://tools.ietf.org/html/rfc6455#section-5.4
 
 o server: bug in windows; calling accept multiple times!
-
+o server: vdb_set_listen_port() and #define VBD_LISTEN_PORT, warn if both
 o server: SO_REUSEADDR
 
 o server/browser: hton and ntoh?

@@ -1,58 +1,36 @@
-#define _CRT_SECURE_NO_WARNINGS
-#include <stdint.h>
-#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include "tcp.c"
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <winsock.h>
-#pragma comment(lib, "wsock32.lib")
-
-static int client_socket = 0;
-static int listen_socket = 0;
-
-int tcp_accept(uint16_t port)
+int recv_thread()
 {
-    struct sockaddr_in address;
-    struct WSAData wsa;
-    listen_socket = 0;
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
+    static char data[1024*1024] = {0};
+    int count = 0;
+    do
     {
-        printf("Failed to initialize TCP socket.\n");
-        return 0;
-    }
-    listen_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (listen_socket == INVALID_SOCKET)
-    {
-        WSACleanup();
-        printf("Failed to create a TCP socket.\n");
-        return 0;
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(port);
-    if (bind(listen_socket, (const struct sockaddr*)&address, sizeof(address)) == SOCKET_ERROR)
-    {
-        closesocket(listen_socket);
-        WSACleanup();
-        printf("Failed to bind socket to port %d. Try a different port?\n", port);
-        return 0;
-    }
-    if (listen(listen_socket, SOMAXCONN) == SOCKET_ERROR)
-    {
-        closesocket(listen_socket);
-        WSACleanup();
-        printf("Failed to begin listening for clients.\n");
-        return 0;
-    }
-    client_socket = accept(listen_socket, 0, 0);
-    if (client_socket == INVALID_SOCKET)
-    {
-        printf("Could not accept client socket.\n");
-        return 0;
-    }
-    return 1;
+        count = tcp_recv(data, sizeof(data));
+        if (count > 0)
+            printf("sv (%d): '%s'\n", count, data);
+    } while (count > 0);
+    return 0;
 }
 
+void send_thread()
+{
+    static char data[1024*1024] = {0};
+    printf("Type a message and press enter.\n");
+    while (1)
+    {
+        printf("> ");
+        scanf("%s", data);
+        if (tcp_send(data, strlen(data)+1) == 0)
+            break;
+    }
+    printf("Oh shit\n");
+}
+
+#if defined(_WIN32) || defined(_WIN64)
 int tcp_connect(uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, uint16_t port)
 {
     struct sockaddr_in address;
@@ -79,140 +57,76 @@ int tcp_connect(uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, uint16_t por
     return 1;
 }
 
-int tcp_send(void *data, uint32_t size)
-{
-    int sent_bytes = send(client_socket, (const char*)data, size, 0);
-    if (sent_bytes > 0) return sent_bytes;
-    return 0;
-}
-
-int tcp_recv(void *buffer, uint32_t capacity)
-{
-    int read_bytes = recv(client_socket, (char*)buffer, capacity, 0);
-    if (read_bytes > 0) return read_bytes;
-    return 0;
-}
-
+DWORD WINAPI win_recv_thread(void *vdata) { return recv_thread(); }
+void create_recv_thread() { CreateThread(0, 0, win_recv_thread, NULL, 0, 0); }
 #else
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/types.h>
 
-static int listen_socket = 0; // @ needs to be shared mmap
-
-int tcp_accept(uint16_t port)
+int tcp_connect(const char *addr, const char *port)
 {
-    struct sockaddr_in address;
-    struct WSAData wsa;
-    listen_socket = 0;
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
+    struct addrinfo hints = {0};
+    struct addrinfo *info = 0;
+    has_client_socket = 0;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    if (getaddrinfo(addr, port, &hints, &info) == -1)
+        return 0;
+    client_socket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+    if (client_socket == -1)
+        return 0;
+    if (connect(client_socket, info->ai_addr, info->ai_addrlen) == -1)
     {
-        printf("Failed to initialize TCP socket.\n");
+        close(client_socket);
         return 0;
     }
-    listen_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (listen_socket == INVALID_SOCKET)
+    has_client_socket = 1;
+    return 1;
+}
+
+int create_recv_thread()
+{
+    pid_t pid = fork();
+    if (pid == -1)
     {
-        WSACleanup();
-        printf("Failed to create a TCP socket.\n");
         return 0;
     }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(port);
-    if (bind(listen_socket, (const struct sockaddr*)&address, sizeof(address)) == SOCKET_ERROR)
+    if (pid == 0) // is child
     {
-        closesocket(listen_socket);
-        WSACleanup();
-        printf("Failed to bind socket to port %d. Try a different port?\n", port);
-        return 0;
-    }
-    if (listen(listen_socket, SOMAXCONN) == SOCKET_ERROR)
-    {
-        closesocket(listen_socket);
-        WSACleanup();
-        printf("Failed to begin listening for clients.\n");
-        return 0;
-    }
-    client_socket = accept(listen_socket, 0, 0);
-    if (client_socket == INVALID_SOCKET)
-    {
-        printf("Could not accept client socket.\n");
-        return 0;
+        recv_thread();
+        _exit(0); // http://unix.stackexchange.com/questions/91058/file-descriptor-and-fork
     }
     return 1;
 }
 
-int tcp_connect(uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, uint16_t port)
-{
-
-}
-
-int tcp_send(void *data, uint32_t size)
-{
-
-}
-
-int tcp_recv(void *buffer, uint32_t capacity)
-{
-
-}
-
-
-#endif
-
-DWORD WINAPI recv_thread(void *vdata)
-{
-    static char data[1024*1024] = {0};
-    int count = 0;
-    do
-    {
-        count = tcp_recv(data, sizeof(data));
-        if (count > 0)
-            printf("sv (%d): '%s'\n", count, data);
-    } while (count > 0);
-    return 0;
-}
-
-void send_thread()
-{
-    static char data[1024*1024] = {0};
-    printf("Type a message and press enter.\n");
-    do
-    {
-        scanf("%s", data);
-    } while (tcp_send(data, strlen(data)+1) != 0);
-}
-
 int main(int argc, char **argv)
 {
-    if (argc == 6) // client
+    if (argc == 3) // client
     {
-        uint8_t ip1 = (uint8_t)atoi(argv[1]);
-        uint8_t ip2 = (uint8_t)atoi(argv[2]);
-        uint8_t ip3 = (uint8_t)atoi(argv[3]);
-        uint8_t ip4 = (uint8_t)atoi(argv[4]);
-        uint16_t port = (uint16_t)atoi(argv[5]);
-        printf("connecting to %d.%d.%d.%d:%d...\n", ip1, ip2, ip3, ip4, port);
-        while (!tcp_connect(ip1, ip2, ip3, ip4, port))
+        char *addr = argv[1];
+        char *port = argv[2];
+        printf("Connecting to %s:%s\n", addr, port);
+        while (!tcp_connect(addr, port))
         {
-            printf("failed.\n");
+            // block
         }
-        printf("success!\n");
-        CreateThread(0, 0, recv_thread, NULL, 0, 0);
+        create_recv_thread();
         send_thread();
+        tcp_close();
     }
     else if (argc == 2) // server
     {
-        uint16_t port = (uint16_t)atoi(argv[1]);
-        printf("listening to %d\n", port);
-        if (!tcp_accept(port))
+        int port = atoi(argv[1]);
+        if (!tcp_listen(port))
         {
+            printf("Are you really allowed to use port %d?", port);
             return 0;
         }
-        printf("got a client!\n");
-        CreateThread(0, 0, recv_thread, NULL, 0, 0);
+        do
+        {
+            printf("Waiting for client on port %d.\n", port);
+        } while(!tcp_accept());
+        create_recv_thread();
         send_thread();
+        tcp_close();
     }
     else
     {
@@ -222,3 +136,4 @@ int main(int argc, char **argv)
     }
     return 0;
 }
+#endif
