@@ -1,17 +1,69 @@
+#include <stdio.h> // sprintf, printf
+
+// interface
+
+struct vdb_msg_t
+{
+    char *payload;
+    int length;
+    int fin;
+    int opcode;
+};
+
+int vdb_extract_user_key(const char *request, int request_len, char *key);
+int vdb_generate_accept_key(const char *request, int request_len, char *accept_key);
+int vdb_send_handshake(const char *request, int request_len);
+int vdb_wait_for_handshake();
+int vdb_self_test();
+void vdb_print_bytes(void *recv_buffer, int n);
+int vdb_send_message(const void *data, int length);
+int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg);
+
+// implementation
+
 #define MBEDTLS_SHA1_C
 #include "sha1.c" // @ replace https://tools.ietf.org/html/rfc3174#page-10
 
-size_t vdb_extract_user_key(const char *request, size_t request_len, char *key);
+int vdb_extract_user_key(const char *request, int request_len, char *key)
+{
+    // The user request contains this string somewhere in it:
+    // "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n", This
+    // code extracts the "dGhlIHNhbXBsZSBub25jZQ==" part.
+    int i,j;
+    int key_len = 0;
+    const char *pattern = "Sec-WebSocket-Key:";
+    int pattern_len = (int)strlen(pattern);
+    vdb_assert(request_len >= pattern_len);
+    for (i = 0; i < request_len-pattern_len; i++)
+    {
+        int is_equal = 1;
+        for (j = 0; j < pattern_len; j++)
+        {
+            if (request[i+j] != pattern[j])
+                is_equal = 0;
+        }
+        if (is_equal)
+        {
+            const char *src = request + i + pattern_len + 1;
+            while (*src && *src != '\r')
+            {
+                key[key_len++] = *src;
+                src++;
+            }
+        }
+    }
+    return key_len;
+}
 
-int vdb_generate_accept_key(const char *request, size_t request_len, char *accept_key)
+int vdb_generate_accept_key(const char *request, int request_len, char *accept_key)
 {
     // The WebSocket standard has defined that the server must respond to a connection
     // request with a hash key that is generated from the user's key. This code implements
     // the stuff in https://tools.ietf.org/html/rfc6455#section-1.3
     char user_key[1024] = {0};
     unsigned char new_key[1024] = {0};
-    size_t user_len = 0;
-    size_t new_len = 0;
+    int user_len = 0;
+    int new_len = 0;
 
     user_len = vdb_extract_user_key(request, request_len, user_key);
     vdb_assert(user_len > 0);
@@ -19,18 +71,18 @@ int vdb_generate_accept_key(const char *request, size_t request_len, char *accep
     // Concatenate salt and user keys
     {
         const char *salt = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-        size_t salt_len = strlen(salt);
-        while (new_len < user_len)
-            new_key[new_len++] = (unsigned char)user_key[new_len];
-        while (new_len-user_len < salt_len)
-            new_key[new_len++] = (unsigned char)salt[new_len-user_len];
+        int salt_len = (int)strlen(salt);
+        for (new_len = 0; new_len < user_len; new_len++)
+            new_key[new_len] = (unsigned char)user_key[new_len];
+        for (; new_len < user_len + salt_len; new_len++)
+            new_key[new_len] = (unsigned char)salt[new_len-user_len];
     }
 
     // Compute the accept-key
     {
         // Compute sha1 hash
         unsigned char sha1[20];
-        mbedtls_sha1(new_key, new_len, sha1);
+        mbedtls_sha1(new_key, (size_t)new_len, sha1);
 
         // Convert to base64 null-terminated string
         {
@@ -54,33 +106,171 @@ int vdb_generate_accept_key(const char *request, size_t request_len, char *accep
     return 1;
 }
 
-size_t vdb_extract_user_key(const char *request, size_t request_len, char *key)
+int vdb_send_handshake(const char *request, int request_len)
 {
-    // The user request contains this string somewhere in it:
-    // "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n", This
-    // code extracts the "dGhlIHNhbXBsZSBub25jZQ==" part.
-    size_t i,j;
-    size_t key_len = 0;
-    const char *pattern = "Sec-WebSocket-Key:";
-    size_t pattern_len = strlen(pattern);
-    vdb_assert(request_len >= pattern_len);
-    for (i = 0; i < request_len-pattern_len; i++)
+    char accept_key[1024];
+    char response[1024];
+    int response_len;
+    vdb_assert(vdb_generate_accept_key(request, request_len, accept_key));
+    response_len = sprintf(response,
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Accept: %s\r\n\r\n",
+        accept_key
+    );
+    vdb_assert(tcp_send(response, response_len)); // @ error codes from tcp
+    return 1;
+}
+
+int vdb_wait_for_handshake()
+{
+    static char request[1024];
+    int request_len = tcp_recv(request, sizeof(request)); // @ error codes from tcp
+    vdb_assert(request_len > 0); // @ error codes from tcp
+    vdb_assert(vdb_send_handshake(request, request_len));
+    return 1;
+}
+
+int vdb_self_test()
+{
+    size_t request_len;
+    char accept_key[1024];
+    const char *request =
+        "GET /chat HTTP/1.1\r\n"
+        "Host: server.example.com\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+        "Sec-WebSocket-Protocol: chat, superchat\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "Origin: http://example.com\r\n\r\n";
+    request_len = strlen(request);
+    vdb_generate_accept_key(request, request_len, accept_key);
+    vdb_assert(strcmp(accept_key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=") == 0);
+    return 1;
+}
+
+void vdb_print_bytes(void *recv_buffer, int n)
+{
+    int index;
+    for (index = 0; index < n; index++)
     {
-        int is_equal = 1;
-        for (j = 0; j < pattern_len; j++)
+        unsigned char c = ((unsigned char*)recv_buffer)[index];
+        printf("%d:\t", index);
+        for (int i = 7; i >= 4; i--) printf("%d", (c >> i) & 1);
+        printf(" ");
+        for (int i = 3; i >= 0; i--) printf("%d", (c >> i) & 1);
+        printf("\n");
+    }
+}
+
+int vdb_send_message(const void *data, int length)
+{
+    unsigned char frame[16] = {0};
+    int frame_length = 0;
+    {
+        // fin rsv1 rsv2 rsv3 opcode
+        // 1   0    0    0    0010
+        frame[0] = 0x82;
+        if (length <= 125)
         {
-            if (request[i+j] != pattern[j])
-                is_equal = 0;
+            frame[1] = (unsigned char)(length & 0xFF);
+            frame_length = 2;
         }
-        if (is_equal)
+        else if (length <= 65535)
         {
-            const char *src = request + i + pattern_len + 1;
-            while (*src && *src != '\r')
-            {
-                key[key_len++] = *src;
-                src++;
-            }
+            frame[1] = 126;
+            frame[2] = (unsigned char)((length >> 8) & 0xFF);
+            frame[3] = (unsigned char)((length >> 0) & 0xFF);
+            frame_length = 4;
+        }
+        else
+        {
+            frame[1] = 127;
+            frame[2] = 0; // @ assuming length is max 32 bit
+            frame[3] = 0; // @ assuming length is max 32 bit
+            frame[4] = 0; // @ assuming length is max 32 bit
+            frame[5] = 0; // @ assuming length is max 32 bit
+            frame[6] = (length >> 24) & 0xFF;
+            frame[7] = (length >> 16) & 0xFF;
+            frame[8] = (length >>  8) & 0xFF;
+            frame[9] = (length >>  0) & 0xFF;
+            frame_length = 10;
         }
     }
-    return key_len;
+    vdb_assert(tcp_send(frame, frame_length));
+    vdb_assert(tcp_send(data, length));
+    return 1;
+}
+
+int vdb_parse_message(unsigned char *recv_buffer, int received, vdb_msg_t *msg)
+{
+    // https://tools.ietf.org/html/rfc6455#section-5.4
+    // Note: WebSocket does not send fields unless
+    // they are needed. For example, extended len
+    // is not sent if the len fits inside payload
+    // len.
+    int i = 0;
+    unsigned char key[4] = {0};
+    uint32_t opcode = ((recv_buffer[i  ] >> 0) & 0xF);
+    uint32_t fin    = ((recv_buffer[i++] >> 7) & 0x1);
+    uint64_t len    = ((recv_buffer[i  ] >> 0) & 0x7F);
+    uint32_t mask   = ((recv_buffer[i++] >> 7) & 0x1);
+    vdb_assert(mask == 1); // client messages must be masked
+    if (len == 126)
+    {
+        vdb_assert(i + 2 <= received);
+        len = 0;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++];
+    }
+    else if (len == 127)
+    {
+        vdb_assert(i + 8 <= received);
+        len = 0;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++]; len <<= 8;
+        len |= recv_buffer[i++];
+    }
+
+    vdb_assert(len <= (uint64_t)received); // len must fit inside an int
+    vdb_assert(i + 4 <= received);
+    key[0] = recv_buffer[i++];
+    key[1] = recv_buffer[i++];
+    key[2] = recv_buffer[i++];
+    key[3] = recv_buffer[i++];
+
+    // decode payload
+    {
+        int j = 0;
+        vdb_assert(i + (int)len <= received);
+        for (j = 0; j < (int)len; j++)
+            recv_buffer[i+j] = recv_buffer[i+j] ^ key[j % 4];
+        recv_buffer[i+len] = 0;
+    }
+
+    msg->payload = (char*)(recv_buffer + i);
+    msg->length = (int)len;
+    msg->opcode = (int)opcode;
+    msg->fin = (int)fin;
+
+    // print payload
+    {
+        #if 0
+        printf("[vdb] received %d bytes, first ten are:\n", received);
+        vdb_print_bytes(recv_buffer, 10);
+        printf("fin :\t%u\n", fin);
+        printf("code:\t%u\n", opcode);
+        printf("mask:\t%u\n", mask);
+        printf("len :\t%d bytes\n", *out_length);
+        printf("data:\t'%s'\n", *out_payload);
+        #endif
+    }
+    return 1;
 }
