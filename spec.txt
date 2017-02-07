@@ -1,0 +1,174 @@
+o Target application is already being driven by a control loop
+    ex: A drone receiving video from 60fps camera
+        (While loop)
+    ex: A drone doing state estimation, using IMU and other input
+        (Callbacks)
+
+    - Do not want breakpoints
+    - Might want to send draw calls at a lower rate (primarily
+      for bandwidth reasons; want to be able to send images.)
+
+    int main() {
+      while (...) {
+          Image processing...
+
+          vdb_begin();
+          // This should expand to an if (can_start_new_render)
+          // = true if previous drawing has finished transmission
+          //        and if sufficient time has elapsed since last
+          //        that may be adjusted by the user
+          //
+          // vdb_begin could do a udp_recv, and check if it receives
+          // a OK signal from the visualizer. Inside this signal, we
+          // could piggyback other information, like which element the
+          // user hovered over, to allow conditional visualization.
+          {
+              vdb_point()
+              vdb_point()
+              vdb_line()
+              ...
+          }
+          vdb_end();
+          // Send commands
+          // If breakpoint -> Halt until signal from visualizer (i.e.
+          // user pressed F10).
+      }
+    }
+
+o Target application is not being driven by a control loop.
+  Developer wants to visualize outputs of algorithms.
+    ex: Inspect processed images (rgb_to_gray)
+        (Few output stages, send images)
+        (No interaction)
+    ex: Draw extracted high-level information: Hough tables
+        (Few output stages, send point and line draw calls)
+        (Want hover and tooltip, conditional visualization)
+        (Want 20-60 fps interaction)
+    ex: Visualize chain rule derivatives and gradient field
+        (Point and line draw calls)
+        (Target-controlled camera -> Want 60 fps interaction)
+
+    - Want breakpoints
+    - Might want to forgo using sockets, and use a popen stream
+      instead for higher bandwidth.
+
+run-and-continue visualization
+    ...
+    vdb_begin();
+    {
+        ...
+    }
+    vdb_end();
+
+breakpoint visualization
+    vdb_begin();
+    {
+        ...
+    }
+    vdb_end();
+    vdb_break();
+
+looping visualization
+    while (vdb_begin()) {
+        ...
+        vdb_end();
+    }
+
+    The rate at which vdb_begin returns true is controlled by the amount of
+    data transmitted, and also specifiable by the user in the target application
+    or the visualizer.
+
+interactive visualization
+    while (vdb_begin()) {
+        ...
+            if (vdb_select(x, y))
+            {
+                vdb_line(x, y, x+1, y);
+                vdb_tooltip("%.2f %.2f", x, y);
+            }
+        ...
+
+        vdb_slider1f("Roll", &roll, -1.5f, +1.5f);
+        if (vdb_button("Solve"))
+        {
+            ... recompute data ...
+        }
+        vdb_end();
+    }
+
+labelled renders
+    vdb_begin("Grayscale");
+    ...
+    vdb_end();
+
+    vdb_begin("Edge detection");
+    ...
+    vdb_end();
+
+    ...
+
+    The target application could have multiple visualizations and
+    vdb could switch between them. vdb could of course store the
+    draw calls for a render, and reproduce whenever you want.
+
+history of renders
+    target_control_loop {
+        ...
+
+        vdb_begin("Grayscale");
+        ...
+        vdb_end();
+    }
+
+    Visualizer stores previous frames to allow you to see the past.
+
+auto resize camera:
+    Automatically center view around draw calls
+    Useful for single focus 2D or 3D drawings in a single space
+
+custom camera:
+    vdb_viewOrtho(...)
+    vdb_view3D(...)
+    vdb_view3DOrtho(...)
+        Associates a view transform for the draw commands to follow
+
+fixed camera versus controlled camera:
+    vdb application could be in control of this, since it can run persistently.
+
+TARGET INTERFACE
+    input/output
+    vdb_begin
+    vdb_end
+    vdb_select
+
+    input/output
+    vdb_slider[1/2/3/4][f/i]
+    vdb_button
+    vdb_tooltip
+    vdb_label
+
+    target state
+    vdb_color1i(i, alpha) [0-8]
+    vdb_color1f(f, alpha) [0.0-1.0]
+    vdb_color4f(r,g,b,a)
+
+    output
+    vdb_clear
+    vdb_point[2/3]f
+    vdb_line[2/3]f
+    vdb_triangle[2/3]f
+    vdb_texture
+    vdb_view[2d/3d/3dOrtho]
+
+    maybe: Having these as special calls could reduce bandwidth
+        vdb_cylinder
+        vdb_sphere
+        vdb_circle
+
+    maybe: I don't use these that often
+        vdb_checkbox
+        vdb_radio
+
+stereo colors
+    0.24, 0.82, 0.73
+    0.93, 0.16, 0.15
