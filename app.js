@@ -2,13 +2,6 @@ var ws = 0;
 var cvs = 0;
 var ctx = 0;
 
-// function doc_onkeydown(e)
-// {
-//     if (e.key == "Escape")
-//         ws.send("shutdown");
-// }
-// document.onkeydown = doc_onkeydown;
-
 function ws_onmessage(e)
 {
     // console.log(e.data);
@@ -30,8 +23,8 @@ function ws_onmessage(e)
 
     for (var i = 0; i < count; i++)
     {
-        var x_ndc = view.getFloat32(2 + 4*(2*i+0), little_endian);
-        var y_ndc = view.getFloat32(2 + 4*(2*i+1), little_endian);
+        var x_ndc = view.getFloat32(4 + 4*(2*i+0), little_endian);
+        var y_ndc = view.getFloat32(4 + 4*(2*i+1), little_endian);
         var a = cvs.height/cvs.width;
         var x = (0.5+0.5*x_ndc*a)*cvs.width;
         var y = (0.5+0.5*y_ndc)*cvs.height;
@@ -65,8 +58,8 @@ function ws_connect()
 
 function app_onload()
 {
-    var cvs = document.getElementById("canvas");
-    var ctx = canvas.getContext("2d");
+    cvs = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
     if (ws == 0)
     {
         ws_connect();

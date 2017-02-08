@@ -70,9 +70,9 @@ int main()
     {
         if (vdb_begin())
         {
-            draw_cool_spinny_thing(1.0f/120.0f);
+            draw_cool_spinny_thing(1.0f/24.0f);
             vdb_end();
         }
-        vdb_sleep(500);
+        vdb_sleep(1000/24);
     }
 }
