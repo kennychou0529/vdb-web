@@ -3,16 +3,18 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <fcntl.h>
+#include <errno.h>
 
-int tcp_listen(int listen_port, int *out_listen_socket)
+int tcp_listen(int listen_port)
 {
     struct addrinfo *a = 0;
     struct addrinfo *info = 0;
     struct addrinfo hints = {0};
-    int listen_socket = 0;
-
     char listen_port_str[64];
     sprintf(listen_port_str, "%d", listen_port);
+
+    has_listen_socket = 0;
 
     // Fetch available addresses
     hints.ai_family = AF_UNSPEC; // Don't care if ipv4 or ipv6
@@ -31,7 +33,6 @@ int tcp_listen(int listen_port, int *out_listen_socket)
             port = ntohs((int)((struct sockaddr_in*)a->ai_addr)->sin_port);
         else
             port = ntohs((int)((struct sockaddr_in6*)a->ai_addr)->sin6_port);
-
         if (port != listen_port)
             continue;
 
@@ -50,27 +51,44 @@ int tcp_listen(int listen_port, int *out_listen_socket)
         if (listen(listen_socket, 1) == -1)
         {
             close(listen_socket);
-            return 0;
+            continue;
         }
+        has_listen_socket = 1;
         break;
     }
     freeaddrinfo(info);
-    *out_listen_socket = listen_socket;
-    return 1;
+    return has_listen_socket;
 }
 
-int tcp_accept(int listen_socket, int *out_client_socket)
+int tcp_accept()
 {
-    int client_socket = accept(listen_socket, 0, 0);
+    vdb_assert(has_listen_socket);
+    client_socket = accept(listen_socket, 0, 0);
     if (client_socket == -1)
         return 0;
-    *out_client_socket = client_socket;
+    has_client_socket = 1;
     return 1;
 }
 
-int tcp_close(int s)
+int tcp_shutdown()
 {
-    close(s);
+    if (has_listen_socket) close(listen_socket);
+    if (has_client_socket) close(client_socket);
+    has_listen_socket = 0;
+    has_client_socket = 0;
     return 1;
 }
 
+int tcp_send(const void *data, int size, int *sent_bytes)
+{
+    *sent_bytes = send(client_socket, data, size, 0);
+    if (*sent_bytes >= 0) return 1;
+    else return 0;
+}
+
+int tcp_recv(void *buffer, int capacity, int *read_bytes)
+{
+    *read_bytes = recv(client_socket, buffer, capacity, 0);
+    if (*read_bytes > 0) return 1;
+    else return 0;
+}
