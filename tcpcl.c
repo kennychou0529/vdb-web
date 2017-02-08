@@ -1,13 +1,13 @@
 #define vdb_assert(EXPR) if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; }
 #include "tcp.c"
-#include <string.h>
-#include <stdlib.h>
+#include <string.h> // strlen
+#include <stdlib.h> // atoi
 #include <stdio.h>
-#include <signal.h>
-#include <sys/mman.h>
 
-#include <fcntl.h> // for pipes
-#include <unistd.h> // for pipes
+#include <signal.h> // kill, SIGUSR1
+#include <sys/mman.h> // mmap
+#include <fcntl.h> // O_NONBLOCK (pipe2)
+#include <unistd.h> // pipe, pipe2
 
 struct shared_t
 {
