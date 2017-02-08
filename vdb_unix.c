@@ -215,16 +215,35 @@ void vdb_recv_thread(int port)
         if (!tcp_recv(vs->recv_buffer, vdb_recv_buffer_size, &read_bytes)) // @ INCOMPLETE: Assemble frames
         {
             vdb_log("connection went down\n");
+            vs->has_connection = 0;
             tcp_shutdown();
             if (vs->has_send_thread)
             {
                 kill(send_pid, SIGUSR1);
                 vs->has_send_thread = 0;
             }
-            usleep(1000*1000);
+            usleep(100*1000);
             continue;
         }
-        vdb_log("got (%d) bytes\n", read_bytes);
+
+        {
+            vdb_msg_t msg = {0};
+            if (vdb_parse_message(vs->recv_buffer, read_bytes, &msg))
+            {
+                if (!msg.fin)
+                {
+                    vdb_log("got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
+                }
+                else
+                {
+                    vdb_log("got a final message (%d): '%s'\n", msg.length, msg.payload);
+                    if (strcmp(msg.payload, "shutdown") == 0)
+                    {
+                        // vdb_should_close = 1;
+                    }
+                }
+            }
+        }
     }
 }
 
