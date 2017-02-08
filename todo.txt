@@ -1,7 +1,5 @@
 
 o server: send list of possible views and let browser filter
-o server: check the return value of blocking send and send multiple times until done
-    http://stackoverflow.com/questions/5407182/blocking-sockets-when-exactly-does-send-return
 o server: bug in windows; calling accept multiple times!
 o server: SO_REUSEADDR
 o server: hton and ntoh
@@ -25,10 +23,6 @@ o brower: performance
 o browser: idle anim
     https://projects.lukehaas.me/css-loaders/
     http://imgur.com/gallery/s7N6N
-
-o browser: 60fps + animations; don't just render on message
-    - smooth camera motion
-    - https://www.html5rocks.com/en/tutorials/canvas/performance/#toc-raf
 
 o browser: dynamic viewport and canvas size
 
