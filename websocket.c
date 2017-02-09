@@ -1,5 +1,6 @@
-// interface
+// websocket.c - Version 1 - Websocket utilities
 
+// interface
 struct vdb_msg_t
 {
     char *payload;
@@ -7,14 +8,12 @@ struct vdb_msg_t
     int fin;
     int opcode;
 };
-
 int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length);
 int vdb_self_test();
 void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
 int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
-
 #define MBEDTLS_SHA1_C
 #include "sha1.c" // @ replace https://tools.ietf.org/html/rfc3174#page-10
 
@@ -253,8 +252,8 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
     msg->fin = (int)fin;
 
     // print payload
+    #if 0
     {
-        #if 0
         printf("[vdb] received %d bytes, first ten are:\n", received);
         vdb_print_bytes(frame, 10);
         printf("fin :\t%u\n", fin);
@@ -262,7 +261,7 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
         printf("mask:\t%u\n", mask);
         printf("len :\t%d bytes\n", *out_length);
         printf("data:\t'%s'\n", *out_payload);
-        #endif
     }
+    #endif
     return 1;
 }

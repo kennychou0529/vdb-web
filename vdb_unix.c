@@ -1,10 +1,3 @@
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <signal.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-
 struct vdb_shared_t
 {
     int has_recv_thread;

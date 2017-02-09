@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 struct vdb_shared_t
 {
     volatile HANDLE send_semaphore;

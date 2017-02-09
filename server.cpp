@@ -1,4 +1,5 @@
 #define VDB_LISTEN_PORT 8000
+#include "vdb.h"
 #include "vdb.c"
 
 #include <stdio.h>
