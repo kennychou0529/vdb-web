@@ -1,15 +1,14 @@
-var ws = 0;
+var ws = null;
 var cvs = 0;
 var ctx = 0;
 var cmd_data = 0;
 var fps = 60;
-var has_connection = false;
 
 function render()
 {
     var status = document.getElementById("status");
 
-    if (has_connection && cmd_data != 0)
+    if (ws && cmd_data != 0)
     {
         status.innerHTML = "Connected!";
 
@@ -58,32 +57,33 @@ function loop()
 
 function try_connect()
 {
-    setTimeout(try_connect, 1000);
-
-    if (!has_connection)
+    setInterval(function()
     {
-        ws = new WebSocket("ws://localhost:8000");
-        ws.binaryType = 'arraybuffer';
-
-        ws.onopen = function()
+        if (!ws)
         {
-            console.log("Sending data");
-            ws.send("Hello from browser!");
-            has_connection = true;
-        }
+            // console.log("Retry!");
+            ws = new WebSocket("ws://localhost:8000");
+            ws.binaryType = 'arraybuffer';
 
-        ws.onclose = function()
-        {
-            console.log("Socket closed");
-            has_connection = false;
-        }
+            ws.onopen = function()
+            {
+                // console.log("Sending data");
+                ws.send("Hello from browser!");
+            }
 
-        ws.onmessage = function(e)
-        {
-            cmd_data = e.data;
-            // @ TODO: Parse and unpack data, convert to correct endian, etc
+            ws.onclose = function()
+            {
+                // console.log("Socket closed");
+                ws = null;
+            }
+
+            ws.onmessage = function(e)
+            {
+                cmd_data = e.data;
+                // @ TODO: Parse and unpack data, convert to correct endian, etc
+            }
         }
-    }
+    }, 1000);
 }
 
 function app_onload()
