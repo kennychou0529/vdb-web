@@ -9,7 +9,7 @@ function render()
 {
     var status = document.getElementById("status");
 
-    if (has_connection)
+    if (has_connection && cmd_data != 0)
     {
         status.innerHTML = "Connected!";
 
