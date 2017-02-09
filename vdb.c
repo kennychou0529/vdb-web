@@ -16,7 +16,8 @@ int vdb_push_r32(float x);
 // Implementation
 #define vdb_assert(EXPR) if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; }
 #define vdb_log(...) { printf("[vdb] %s@L%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); }
-#define vdb_err_user(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %d: ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
+#define vdb_log_once(...) { static int first = 1; if (first) { printf("[vdb] "); printf(__VA_ARGS__); first = 0; } }
+#define vdb_err_once(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %s:\n[vdb] ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
 
 #ifndef VDB_WORK_BUFFER_SIZE
 #define VDB_WORK_BUFFER_SIZE (1024*1024)

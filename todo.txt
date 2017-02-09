@@ -1,9 +1,8 @@
 
 o server: send list of possible views and let browser filter
-o server: bug in windows; calling accept multiple times!
-o server: SO_REUSEADDR
 o server: hton and ntoh
-o server: fix bug in tcp_close(); valid socket handles might be zero
+o server: Simple TCP HTML server
+            If we get an HTML get request, send the webpage!
 o server: Receive large messages (accumulate, until FIN)
 
 o server: vdb_text

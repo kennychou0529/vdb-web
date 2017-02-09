@@ -31,7 +31,8 @@ DWORD WINAPI recv_thread(void *vdata)
         {
             if (vdb_listen_port == 0)
             {
-                printf("[vdb] Warning: You have not set the listening port for vdb. Using 8000.\n"
+                vdb_log_once(
+                       "Warning: You have not set the listening port for vdb. Using 8000.\n"
                        "You can use a different port by calling vdb_set_listen_port(<port>),\n"
                        "or by #define VDB_LISTEN_PORT <port> before #including vdb.c.\n"
                        "Valid ports are between 1024 and 65535.\n");
@@ -44,6 +45,7 @@ DWORD WINAPI recv_thread(void *vdata)
                 vdb_sleep(1000);
                 continue;
             }
+            vdb_log_once("Visualization is live at <Your IP>:%d\n", vdb_listen_port);
         }
         if (!has_client_socket)
         {
@@ -156,7 +158,7 @@ int vdb_begin() // @ vdb_begin(dt)
         vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1); // zero-initialize
         if (!vdb_shared)
         {
-            vdb_err_user("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE.\n");
+            vdb_err_once("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE.\n");
             return 0;
         }
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
