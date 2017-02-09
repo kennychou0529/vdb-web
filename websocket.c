@@ -155,7 +155,7 @@ void vdb_print_bytes(void *recv_buffer, int n)
 
 void vdb_form_frame(int length, unsigned char **out_frame, int *out_length)
 {
-    unsigned char frame[16] = {0};
+    static unsigned char frame[16] = {0};
     int frame_length = 0;
     {
         // fin rsv1 rsv2 rsv3 opcode
