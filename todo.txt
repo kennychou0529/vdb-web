@@ -1,4 +1,6 @@
 
+o server: msg queue, poll.
+
 o server: send list of possible views and let browser filter
 o server: hton and ntoh
 o server: Receive large messages (accumulate, until FIN)

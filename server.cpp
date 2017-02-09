@@ -8,9 +8,9 @@
 
 void draw_cool_spinny_thing(float dt)
 {
-    float data[2*512];
+    static float data[2*128*40];
     int count = 0;
-    #define point(x,y) if (count < 512) { data[2*count+0] = x; data[2*count+1] = y; count++; }
+    #define point(x,y) if (count < 1024*10) { data[2*count+0] = x; data[2*count+1] = y; count++; }
 
     static float t = 0.0f;
     float pi = 3.14f;
@@ -18,6 +18,16 @@ void draw_cool_spinny_thing(float dt)
     float pi_half = 3.14f/2.0f;
     float dur = 3.2f;
 
+    #if 1
+    for (int k = 0; k < 40; k++)
+    for (int i = 0; i < 128; i++)
+    {
+        float x = -1.0f + 2.0f*i/128.0f;
+        float a = pi*x + two_pi*(t/dur) + pi*k/40.0f;
+        float y = 0.1f*sinf(a) + (-1.0f+2.0f*k/40.0f);
+        point(x, y);
+    }
+    #else
     float t1 = 0.0f;
     float t2 = 0.0f;
     if (t < dur/2.0f)
@@ -46,6 +56,7 @@ void draw_cool_spinny_thing(float dt)
         point(r2*cosf(a2), r2*sinf(a2));
         point(r3*cosf(a3), r3*sinf(a3));
     }
+    #endif
 
     t += dt;
     if (t > dur)

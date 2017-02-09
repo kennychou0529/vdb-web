@@ -33,8 +33,9 @@ function render()
             var a = cvs.height/cvs.width;
             var x = (0.5+0.5*x_ndc*a)*cvs.width;
             var y = (0.5+0.5*y_ndc)*cvs.height;
-            ctx.moveTo(x, y);
-            ctx.arc(x, y, 6, 0, Math.PI*2.0);
+            ctx.fillRect(x,y,5,5);
+            // ctx.moveTo(x, y);
+            // ctx.arc(x, y, 6, 0, Math.PI*2.0);
         }
 
         // ctx.stroke();
