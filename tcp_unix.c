@@ -62,7 +62,6 @@ int tcp_listen(int listen_port)
 
 int tcp_accept()
 {
-    vdb_assert(has_listen_socket);
     client_socket = accept(listen_socket, 0, 0);
     if (client_socket == -1)
         return 0;
