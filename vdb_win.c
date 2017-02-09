@@ -73,7 +73,34 @@ DWORD WINAPI recv_thread(void *vdata)
             if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
             {
                 vdb_log("Failed to generate handshake\n");
-                tcp_shutdown();
+
+                // If we failed to generate a handshake, it means that either
+                // we did something wrong, or the browser did something wrong,
+                // or the request was an ordinary HTTP request. If the latter
+                // we'll send an HTTP response containing the vdb.html page.
+                char data[1024];
+                const char *content = "<html>In the future I'll also send the vdb application to you over the browser.<br>For now, you need to open the app.html file in your browser.</html>";
+                int len = sprintf(data,
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Length: %d\r\n"
+                    "Content-Type: text/html\r\n"
+                    "Connection: Closed\r\n\r\n%s",
+                    strlen(content),
+                    content
+                    );
+
+                if (!tcp_sendall(data, len))
+                {
+                    vdb_log("Lost connection while sending HTML page\n");
+                    tcp_shutdown();
+                    vdb_sleep(1000);
+                    continue;
+                }
+
+                // Sending 'Connection: Closed' allows us to close the socket immediately
+                closesocket(client_socket);
+                has_client_socket = 0;
+
                 vdb_sleep(1000);
                 continue;
             }
