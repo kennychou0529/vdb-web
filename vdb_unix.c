@@ -6,23 +6,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define vdb_work_buffer_size (1024*1024)
-#define vdb_recv_buffer_size (1024*1024)
-#ifdef VDB_LISTEN_PORT
-static int vdb_listen_port = VDB_LISTEN_PORT;
-#else
-static int vdb_listen_port = 0;
-#endif
-
-int vdb_set_listen_port(int port)
-{
-    #ifdef VDB_LISTEN_PORT
-    printf("[vdb] Warning: You are setting the port with vdb_set_listen_port and #define VDB_LISTEN_PORT.\nAre you sure this is intentional?\n");
-    #endif
-    vdb_listen_port = port;
-    return 1;
-}
-
 struct vdb_shared_t
 {
     int has_recv_thread;
@@ -48,55 +31,12 @@ struct vdb_shared_t
 
 static vdb_shared_t *vdb_shared = 0;
 
+void vdb_sleep(int milliseconds) { usleep(milliseconds*1000); }
+
 int vdb_wait_data_ready()   { int val = 0; return  read(vdb_shared->ready[0], &val, sizeof(val)) == sizeof(val); }
 int vdb_poll_data_sent()    { int val = 0; return   read(vdb_shared->done[0], &val, sizeof(val)) == sizeof(val); }
 int vdb_signal_data_ready() { int one = 1; return write(vdb_shared->ready[1], &one, sizeof(one)) == sizeof(one); }
 int vdb_signal_data_sent()  { int one = 1; return  write(vdb_shared->done[1], &one, sizeof(one)) == sizeof(one); }
-
-int vdb_push_s32(int32_t x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(x) < vdb_work_buffer_size)
-    {
-        *(int32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(x);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_push_r32(float x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(x) < vdb_work_buffer_size)
-    {
-        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(x);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_sendall(void *buffer, int bytes_to_send)
-{
-    int sent;
-    int remaining = bytes_to_send;
-    char *ptr = (char*)buffer;
-    while (remaining > 0)
-    {
-        if (!tcp_send(ptr, remaining, &sent))
-        {
-            vdb_log("failed to send all data (%s)\n", strerror(errno));
-            return 0;
-        }
-        remaining -= sent;
-        ptr += sent;
-        if (remaining < 0)
-        {
-            vdb_log("sent too much data\n");
-            return 0;
-        }
-    }
-    return 1;
-}
 
 void vdb_send_thread()
 {
@@ -111,7 +51,7 @@ void vdb_send_thread()
 
         // send frame header
         vdb_form_frame(vs->bytes_to_send, &frame, &frame_len);
-        if (!vdb_sendall(frame, frame_len))
+        if (!tcp_sendall(frame, frame_len))
         {
             vdb_log("failed to send frame\n");
             vdb_signal_data_sent();
@@ -119,7 +59,7 @@ void vdb_send_thread()
         }
 
         // send the payload
-        if (!vdb_sendall(vs->send_buffer, vs->bytes_to_send))
+        if (!tcp_sendall(vs->send_buffer, vs->bytes_to_send))
         {
             vdb_log("failed to send payload\n");
             vdb_signal_data_sent();
@@ -189,7 +129,7 @@ void vdb_recv_thread(int port)
             }
 
             vdb_log("sending handshake\n");
-            if (!vdb_sendall(response, response_len))
+            if (!tcp_sendall(response, response_len))
             {
                 vdb_log("failed to send handshake\n");
                 tcp_shutdown();
@@ -326,9 +266,4 @@ void vdb_end()
         vs->work_buffer_used = 0;
         vs->busy = 1;
     }
-}
-
-void vdb_sleep(int milliseconds)
-{
-    usleep(milliseconds*1000);
 }

@@ -6,6 +6,7 @@ int tcp_accept(int listen_socket);
 int tcp_shutdown();
 int tcp_send(const void *data, int size, int *sent_bytes);
 int tcp_recv(void *buffer, int capacity, int *read_bytes);
+int tcp_sendall(const void *data, int size);
 
 // implementation
 static int client_socket = 0;
@@ -66,3 +67,20 @@ int tcp_connect(const char *addr, const char *port)
     return 1;
 }
 #endif
+
+int tcp_sendall(const void *buffer, int bytes_to_send)
+{
+    int sent;
+    int remaining = bytes_to_send;
+    const char *ptr = (const char*)buffer;
+    while (remaining > 0)
+    {
+        if (!tcp_send(ptr, remaining, &sent))
+            return 0;
+        remaining -= sent;
+        ptr += sent;
+        if (remaining < 0)
+            return 0;
+    }
+    return 1;
+}
