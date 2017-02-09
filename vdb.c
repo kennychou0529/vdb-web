@@ -1,12 +1,3 @@
-// Example usage:
-// #define VDB_LISTEN_PORT 8000 // Set listen port at compile time
-// #include "vdb.c"
-// int main()
-// {
-//     Alternatively, you can set the listen port at runtime
-//     vdb_set_listen_port(8000);
-// }
-
 #include <stdint.h>
 
 // interface
@@ -20,6 +11,13 @@ void vdb_sleep(int milliseconds);
 // implementation
 #define vdb_assert(EXPR) if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; }
 #define vdb_log(...) { printf("[vdb] %s@L%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); }
+#define vdb_work_buffer_size (1024*1024)
+#define vdb_recv_buffer_size (1024*1024)
+#ifdef VDB_LISTEN_PORT
+static int vdb_listen_port = VDB_LISTEN_PORT;
+#else
+static int vdb_listen_port = 0;
+#endif
 #include "tcp.c"
 #include "websocket.c"
 #if defined(_WIN32) || defined(_WIN64)
@@ -27,3 +25,34 @@ void vdb_sleep(int milliseconds);
 #else
 #include "vdb_unix.c"
 #endif
+
+int vdb_set_listen_port(int port)
+{
+    #ifdef VDB_LISTEN_PORT
+    printf("[vdb] Warning: You are setting the port with vdb_set_listen_port and #define VDB_LISTEN_PORT.\nAre you sure this is intentional?\n");
+    #endif
+    vdb_listen_port = port;
+    return 1;
+}
+
+int vdb_push_s32(int32_t x)
+{
+    if (vdb_shared->work_buffer_used + sizeof(x) < vdb_work_buffer_size)
+    {
+        *(int32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
+        vdb_shared->work_buffer_used += sizeof(x);
+        return 1;
+    }
+    return 0;
+}
+
+int vdb_push_r32(float x)
+{
+    if (vdb_shared->work_buffer_used + sizeof(x) < vdb_work_buffer_size)
+    {
+        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
+        vdb_shared->work_buffer_used += sizeof(x);
+        return 1;
+    }
+    return 0;
+}
