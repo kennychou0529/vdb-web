@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -15,9 +14,9 @@ struct vdb_shared_t
     int busy;
     int work_buffer_used;
     int bytes_to_send;
-    char recv_buffer[vdb_recv_buffer_size];
-    char swapbuffer1[vdb_work_buffer_size];
-    char swapbuffer2[vdb_work_buffer_size];
+    char recv_buffer[VDB_RECV_BUFFER_SIZE];
+    char swapbuffer1[VDB_WORK_BUFFER_SIZE];
+    char swapbuffer2[VDB_WORK_BUFFER_SIZE];
     char *work_buffer;
     char *send_buffer;
 
@@ -111,7 +110,7 @@ void vdb_recv_thread(int port)
             char *response;
             int response_len;
             vdb_log("waiting for handshake\n");
-            if (!tcp_recv(vs->recv_buffer, vdb_recv_buffer_size, &read_bytes))
+            if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes))
             {
                 vdb_log("lost connection during handshake\n");
                 tcp_shutdown();
@@ -152,7 +151,7 @@ void vdb_recv_thread(int port)
             }
             usleep(100*1000); // @ RACECOND: UGLY: Let child process set has_send_thread = 1
         }
-        if (!tcp_recv(vs->recv_buffer, vdb_recv_buffer_size, &read_bytes)) // @ INCOMPLETE: Assemble frames
+        if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes)) // @ INCOMPLETE: Assemble frames
         {
             vdb_log("connection went down\n");
             vs->has_connection = 0;

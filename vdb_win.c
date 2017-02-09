@@ -8,9 +8,9 @@ struct vdb_shared_t
 
     int has_connection;
     int work_buffer_used;
-    char recv_buffer[vdb_recv_buffer_size];
-    char swapbuffer1[vdb_work_buffer_size];
-    char swapbuffer2[vdb_work_buffer_size];
+    char recv_buffer[VDB_RECV_BUFFER_SIZE];
+    char swapbuffer1[VDB_WORK_BUFFER_SIZE];
+    char swapbuffer2[VDB_WORK_BUFFER_SIZE];
     char *work_buffer;
     char *send_buffer;
 };
@@ -59,7 +59,7 @@ DWORD WINAPI recv_thread(void *vdata)
             char *response;
             int response_len;
             vdb_log("Waiting for handshake\n");
-            if (!tcp_recv(vs->recv_buffer, vdb_recv_buffer_size, &read_bytes))
+            if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes))
             {
                 vdb_log("Lost connection during handshake\n");
                 tcp_shutdown();
@@ -87,7 +87,7 @@ DWORD WINAPI recv_thread(void *vdata)
 
             vs->has_connection = 1;
         }
-        if (!tcp_recv(vs->recv_buffer, vdb_recv_buffer_size, &read_bytes)) // @ INCOMPLETE: Assemble frames
+        if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes)) // @ INCOMPLETE: Assemble frames
         {
             vdb_log("Connection went down\n");
             vs->has_connection = 0;
@@ -156,7 +156,7 @@ int vdb_begin() // @ vdb_begin(dt)
         vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1); // zero-initialize
         if (!vdb_shared)
         {
-            printf("[vdb] Tried to allocate too much memory, try lowering the recv/send buffer sizes.\n");
+            vdb_err_user("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE.\n");
             return 0;
         }
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
