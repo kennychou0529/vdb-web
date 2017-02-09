@@ -1,5 +1,3 @@
-#include <stdio.h> // sprintf, printf
-
 // interface
 
 struct vdb_msg_t
@@ -104,17 +102,22 @@ int vdb_generate_accept_key(const char *request, int request_len, char *accept_k
 
 int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length)
 {
-    char accept_key[1024];
-    char response[1024];
-    int response_len;
-    vdb_assert(vdb_generate_accept_key(request, request_len, accept_key));
-    response_len = sprintf(response,
+    const char *header1 =
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\n"
         "Connection: Upgrade\r\n"
-        "Sec-WebSocket-Accept: %s\r\n\r\n",
-        accept_key
-    );
+        "Sec-WebSocket-Accept: ";
+    const char *header2 = "\r\n\r\n";
+    char accept_key[1024];
+    char response[1024];
+    int response_len = 0;
+    size_t i = 0;
+
+    vdb_assert(vdb_generate_accept_key(request, request_len, accept_key));
+    for (i = 0; i < strlen(header1); i++)    response[response_len++] = header1[i];
+    for (i = 0; i < strlen(accept_key); i++) response[response_len++] = accept_key[i];
+    for (i = 0; i < strlen(header2); i++)    response[response_len++] = header2[i];
+
     *out_response = response;
     *out_length = response_len;
     return 1;
