@@ -1,11 +1,9 @@
 
-o server: Colors
-    color1i(int x) -> 1 byte -> mapped to a color in the browser
-    color1f(float x) -> quantizes and calls color1i
-    color4f(r, g, b, a) -> 4 byte
+o server: WebGL + offscreen canvas for text
+    http://murfy.de/read/webgl-text-rendering
+    Don't need to implement line clipping!
 
-    Could make 1B scheme compatible with 4B scheme?
-    Reserve the value 255, if sent, then parse the following 4 bytes as RGBA
+o server: Batching and draw commands
 
 o server: msg queue, poll.
 
@@ -22,10 +20,9 @@ o server/browser: interactive
 o browser: user-defined interface sidebar
 o browser: SVG icons (https://material.io/icons/#ic_mode_comment)
 
-o brower: performance
-    - Dynamic quality (toggle nice points or square points)
-    https://hacks.mozilla.org/2009/06/pushing-pixels-with-canvas/
-    http://stackoverflow.com/questions/7812514/drawing-a-dot-on-html5-canvas
+o brower: Dynamic quality balance with performance
+    - Toggle nice points or square points
+    - Line subdivision quality (avoid subdivision for pinhole projection!)
 
 o browser: idle anim
     https://projects.lukehaas.me/css-loaders/

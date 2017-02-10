@@ -76,25 +76,3 @@ void *vdb_push_bytes(const void *data, int count)
         return 0;
     }
 }
-
-int vdb_push_s32(int x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(int32_t) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(int32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = (int32_t)x;
-        vdb_shared->work_buffer_used += sizeof(int32_t);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_push_r32(float x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(float) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(float);
-        return 1;
-    }
-    return 0;
-}
