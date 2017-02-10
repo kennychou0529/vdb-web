@@ -2,6 +2,8 @@
 o server: WebGL + offscreen canvas for text
     http://murfy.de/read/webgl-text-rendering
     Don't need to implement line clipping!
+    https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+    https://webglfundamentals.org/
 
 o server: Batching and draw commands
 
