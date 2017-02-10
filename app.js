@@ -24,7 +24,7 @@ function render()
         var num_point2 = view.getUint32(offset, little_endian); offset += 4;
         var num_point3 = view.getUint32(offset, little_endian); offset += 4;
 
-        ctx.fillStyle="#1a1a1a";
+        ctx.fillStyle="#2a2a2a";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fill();
 
@@ -42,7 +42,20 @@ function render()
             var x2 = (0.5+0.5*x2_ndc*a)*cvs.width;
             var y2 = (0.5+0.5*y2_ndc)*cvs.height;
 
-            ctx.strokeStyle = "#fff";
+                 if (color == 0) ctx.strokeStyle = "#990343";
+            else if (color == 1) ctx.strokeStyle = "#D33F4D";
+            else if (color == 2) ctx.strokeStyle = "#F56D47";
+            else if (color == 3) ctx.strokeStyle = "#FDAE5F";
+            else if (color == 4) ctx.strokeStyle = "#FFDE8D";
+            else if (color == 5) ctx.strokeStyle = "#FFFFBE";
+            else if (color == 6) ctx.strokeStyle = "#FEDF8C";
+            else if (color == 7) ctx.strokeStyle = "#E3F69C";
+            else if (color == 8) ctx.strokeStyle = "#65C39F";
+            else if (color == 9) ctx.strokeStyle = "#3486BE";
+            else                 ctx.strokeStyle = "#5E509F";
+
+            ctx.lineWidth = 4;
+
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
@@ -82,7 +95,7 @@ function render()
             var a = cvs.height/cvs.width;
             var x = (0.5+0.5*x_ndc*a)*cvs.width;
             var y = (0.5+0.5*y_ndc)*cvs.height;
-            ctx.fillRect(x-4,y-4,8,8);
+            ctx.fillRect(x-3,y-3,6,6);
             // ctx.moveTo(x, y);
             // ctx.arc(x, y, 6, 0, Math.PI*2.0);
 
@@ -94,6 +107,7 @@ function render()
             var color = view.getUint8(offset, little_endian); offset += 1;
             var x = view.getFloat32(offset, little_endian); offset += 4;
             var y = view.getFloat32(offset, little_endian); offset += 4;
+            var z = view.getFloat32(offset, little_endian); offset += 4;
         }
     }
     else
