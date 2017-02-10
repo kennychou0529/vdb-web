@@ -50,29 +50,10 @@ void *vdb_push_bytes(const void *data, int count)
     {
         const char *src = (const char*)data;
               char *dst = vdb_shared->work_buffer + vdb_shared->work_buffer_used;
-        if (src)
-        {
-            #if 1
-            memcpy(dst, src, count);
-            #else
-            for (int i = 0; i < count; i++)
-                dst[i] = src[i];
-            #endif
-        }
-        else
-        {
-            #if 1
-            memset(dst, 0, count);
-            #else
-            for (int i = 0; i < count; i++)
-                dst[i] = 0;
-            #endif
-        }
+        if (src) memcpy(dst, src, count);
+        else     memset(dst, 0, count);
         vdb_shared->work_buffer_used += count;
         return (void*)dst;
     }
-    else
-    {
-        return 0;
-    }
+    return 0;
 }
