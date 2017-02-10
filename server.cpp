@@ -40,7 +40,7 @@ void draw_cool_spinny_thing(float dt)
         t2 = 0.5f+0.5f*sinf(pi*(t-dur/2.0f)/(dur/2.0f) - pi_half);
     }
 
-    for (int i = 0; i <= 6; i++)
+    for (int i = 0; i <= 5; i++)
     {
         float r10 = 0.55f;
         float r20 = 0.50f;
@@ -54,9 +54,15 @@ void draw_cool_spinny_thing(float dt)
         vdb_color1i(2); vdb_point2(r1*cosf(a1), r1*sinf(a1));
         vdb_color1i(8); vdb_point2(r2*cosf(a2), r2*sinf(a2));
         vdb_color1i(6); vdb_point2(r3*cosf(a3), r3*sinf(a3));
+
+        vdb_color1i(2);
+        vdb_line2(r1*cosf(a1), r1*sinf(a1), r2*cosf(a2), r2*sinf(a2));
+        vdb_color1i(8);
+        vdb_line2(r1*cosf(a1), r1*sinf(a1), r3*cosf(a3), r3*sinf(a3));
+        vdb_color1i(6);
+        vdb_line2(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
     }
 
-    vdb_color1i(1); vdb_line2(0.0f, 0.0f, 0.5f, 0.5f);
     #endif
 
     t += dt;
