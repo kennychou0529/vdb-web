@@ -1,11 +1,3 @@
-// Notes to future self:
-// * The send thread is allowed to return on unix, because if the connection
-// goes down, the recv thread needs to respawn the process after a new
-// client connection has been acquired (to share the file descriptor).
-// fork() shares the open file descriptors with the child process, but
-// if a file descriptor is _then_ opened in the parent, it will _not_
-// be shared with the child.
-
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
 #define _CRT_SECURE_NO_WARNINGS // @ Replace sprintf
@@ -250,6 +242,12 @@ int vdb_recv_thread()
             vs->has_connection = 1;
         }
         #ifdef VDB_UNIX
+        // The send thread is allowed to return on unix, because if the connection
+        // goes down, the recv thread needs to respawn the process after a new
+        // client connection has been acquired (to share the file descriptor).
+        // fork() shares the open file descriptors with the child process, but
+        // if a file descriptor is _then_ opened in the parent, it will _not_
+        // be shared with the child.
         if (!vs->has_send_thread) // @ RACECOND: UGLY: Spawn only one sending thread!!!
         {
             vs->send_pid = fork();
@@ -311,7 +309,8 @@ int vdb_begin()
         vdb_shared = (vdb_shared_t*)mmap(NULL, sizeof(vdb_shared_t),
                                          PROT_READ|PROT_WRITE,
                                          MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-        if (vdb_shared == MAP_FAILED) vdb_shared = 0;
+        if (vdb_shared == MAP_FAILED)
+            vdb_shared = 0;
         #else
         // Allocate and zero-initialize
         vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1);
