@@ -8,6 +8,7 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
+#define _CRT_SECURE_NO_WARNINGS
 #else
 #define VDB_UNIX
 #include <sys/mman.h>
@@ -94,7 +95,7 @@ int vdb_wait_data_ready()
     return 1;
 }
 int vdb_signal_data_sent()  { vdb_shared->busy = 0; return 1; }
-int vdb_poll_data_sent()    { return (InterlockedCompareExchange(&vdb_shared->busy, 1, 0) == 0) }
+int vdb_poll_data_sent()    { return (InterlockedCompareExchange(&vdb_shared->busy, 1, 0) == 0); }
 int vdb_signal_data_ready() { vdb_shared->busy = 0; ReleaseSemaphore(vdb_shared->send_semaphore, 1, 0); return 1; } // @ mfence, writefence
 void vdb_sleep(int ms)      { Sleep(ms); }
 #else
@@ -106,7 +107,7 @@ void vdb_sleep(int ms)      { usleep(ms*1000); }
 #endif
 
 #ifdef VDB_WINDOWS
-DWORD WINAPI vdb_send_thread(void *vdata)
+DWORD WINAPI vdb_send_thread(void *)
 #else
 int vdb_send_thread()
 #endif
@@ -115,7 +116,7 @@ int vdb_send_thread()
     unsigned char *frame; // @ UGLY: form_frame should modify a char *?
     int frame_len;
     vdb_log("Created send thread\n");
-    while (1)
+    while (!vs->critical_error)
     {
         // blocking until data is signalled ready from main thread
         vdb_critical(vdb_wait_data_ready());
@@ -144,7 +145,7 @@ int vdb_send_thread()
 }
 
 #ifdef VDB_WINDOWS
-DWORD WINAPI vdb_recv_thread(void *vdata)
+DWORD WINAPI vdb_recv_thread(void *)
 #else
 int vdb_recv_thread()
 #endif
@@ -153,7 +154,7 @@ int vdb_recv_thread()
     vdb_log("Created read thread\n");
     int read_bytes;
     vdb_msg_t msg;
-    while (1)
+    while (!vs->critical_error)
     {
         if (vs->critical_error)
         {
@@ -327,12 +328,12 @@ int vdb_begin()
         if (!vdb_shared)
         {
             vdb_err_once("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE.\n");
-            vs->critical_error = 1;
+            vdb_shared->critical_error = 1;
             return 0;
         }
         vdb_shared->send_semaphore = CreateSemaphore(0, 0, 1, 0);
-        CreateThread(0, 0, recv_thread, NULL, 0, 0);
-        CreateThread(0, 0, send_thread, NULL, 0, 0);
+        CreateThread(0, 0, vdb_recv_thread, NULL, 0, 0);
+        CreateThread(0, 0, vdb_send_thread, NULL, 0, 0);
         #endif
 
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
@@ -509,7 +510,7 @@ void vdb_color1i(int c)
 
 void vdb_color1f(float c)
 {
-    int ci = c*255.0f;
+    int ci = (int)(c*255.0f);
     if (ci < 0) ci = 0;
     if (ci > 255) ci = 255;
     vdb_cmdbuf->color = (unsigned char)(ci);
