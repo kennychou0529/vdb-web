@@ -81,3 +81,10 @@ int tcp_shutdown()
     WSACleanup();
     return 1;
 }
+
+int tcp_close_client()
+{
+    has_client_socket = 0;
+    closesocket(client_socket);
+    return 1;
+}

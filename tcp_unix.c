@@ -91,3 +91,10 @@ int tcp_recv(void *buffer, int capacity, int *read_bytes)
     if (*read_bytes > 0) return 1;
     else return 0;
 }
+
+int tcp_close_client()
+{
+    close(client_socket);
+    has_client_socket = 0;
+    return 1;
+}
