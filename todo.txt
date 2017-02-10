@@ -1,4 +1,12 @@
 
+o server: Colors
+    color1i(int x) -> 1 byte -> mapped to a color in the browser
+    color1f(float x) -> quantizes and calls color1i
+    color4f(r, g, b, a) -> 4 byte
+
+    Could make 1B scheme compatible with 4B scheme?
+    Reserve the value 255, if sent, then parse the following 4 bytes as RGBA
+
 o server: msg queue, poll.
 
 o server: send list of possible views and let browser filter

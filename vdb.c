@@ -44,16 +44,38 @@ int vdb_set_listen_port(int port)
     return 1;
 }
 
-// int vdb_push_bytes(const void *buffer, int count)
-// {
-//     if (vdb_shared->work_buffer_used + count <= VDB_WORK_BUFFER_SIZE)
-//     {
-//         const char *src = (const char*)buffer;
-//         char *dst = vdb_shared->work_buffer + vdb_shared->work_buffer_used;
-//         for (int i = 0; i < count; i++, src++) *dst = *src;
-//         vdb_shared->work_buffer_used += count;
-//     }
-// }
+void *vdb_push_bytes(const void *data, int count)
+{
+    if (vdb_shared->work_buffer_used + count <= VDB_WORK_BUFFER_SIZE)
+    {
+        const char *src = (const char*)data;
+              char *dst = vdb_shared->work_buffer + vdb_shared->work_buffer_used;
+        if (src)
+        {
+            #if 1
+            memcpy(dst, src, count);
+            #else
+            for (int i = 0; i < count; i++)
+                dst[i] = src[i];
+            #endif
+        }
+        else
+        {
+            #if 1
+            memset(dst, 0, count);
+            #else
+            for (int i = 0; i < count; i++)
+                dst[i] = 0;
+            #endif
+        }
+        vdb_shared->work_buffer_used += count;
+        return (void*)dst;
+    }
+    else
+    {
+        return 0;
+    }
+}
 
 int vdb_push_s32(int x)
 {

@@ -2,13 +2,14 @@ var ws = null;
 var cvs = 0;
 var ctx = 0;
 var cmd_data = 0;
+var has_connection = false;
 var fps = 60;
 
 function render()
 {
     var status = document.getElementById("status");
 
-    if (ws && cmd_data != 0)
+    if (has_connection && cmd_data != 0)
     {
         status.innerHTML = "Connected!";
 
@@ -16,30 +17,42 @@ function render()
         // @ Negotiate endianness with server
         var little_endian = true;
         var view = new DataView(cmd_data);
-        var count = view.getInt32(0, little_endian);
 
-        ctx.fillStyle="#AA4949";
+        var offset = 0;
+        var count = view.getInt32(offset, little_endian); offset += 4;
+
+        ctx.fillStyle="#1a1a1a";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fill();
 
-        ctx.fillStyle = "#E6D2C2";
-        // ctx.strokeStyle = "#000000";
-        ctx.beginPath();
-
         for (var i = 0; i < count; i++)
         {
-            var x_ndc = view.getFloat32(4 + 4*(2*i+0), little_endian);
-            var y_ndc = view.getFloat32(4 + 4*(2*i+1), little_endian);
+            var color = view.getUint8(offset, little_endian); offset += 1;
+                 if (color == 0) ctx.fillStyle = "#990343";
+            else if (color == 1) ctx.fillStyle = "#D33F4D";
+            else if (color == 2) ctx.fillStyle = "#F56D47";
+            else if (color == 3) ctx.fillStyle = "#FDAE5F";
+            else if (color == 4) ctx.fillStyle = "#FFDE8D";
+            else if (color == 5) ctx.fillStyle = "#FFFFBE";
+            else if (color == 6) ctx.fillStyle = "#FEDF8C";
+            else if (color == 7) ctx.fillStyle = "#E3F69C";
+            else if (color == 8) ctx.fillStyle = "#65C39F";
+            else if (color == 9) ctx.fillStyle = "#3486BE";
+            else                 ctx.fillStyle = "#5E509F";
+            ctx.beginPath();
+
+            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
             var a = cvs.height/cvs.width;
             var x = (0.5+0.5*x_ndc*a)*cvs.width;
             var y = (0.5+0.5*y_ndc)*cvs.height;
-            ctx.fillRect(x,y,5,5);
+            ctx.fillRect(x-4,y-4,8,8);
             // ctx.moveTo(x, y);
             // ctx.arc(x, y, 6, 0, Math.PI*2.0);
+
+            ctx.fill();
         }
 
-        // ctx.stroke();
-        ctx.fill();
     }
     else
     {
@@ -70,12 +83,14 @@ function try_connect()
             {
                 // console.log("Sending data");
                 ws.send("Hello from browser!");
+                has_connection = true;
             }
 
             ws.onclose = function()
             {
                 // console.log("Socket closed");
                 ws = null;
+                has_connection = false;
             }
 
             ws.onmessage = function(e)

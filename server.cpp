@@ -6,26 +6,36 @@
 #include <stdlib.h>
 #include <math.h>
 
+int vdb_point(unsigned char color, float x, float y)
+{
+    if (vdb_push_bytes(&color, 1) &&
+        vdb_push_bytes(&x, 4) &&
+        vdb_push_bytes(&y, 4))
+        return 1;
+    else
+        return 0;
+}
+
 void draw_cool_spinny_thing(float dt)
 {
-    static float data[2*128*40];
-    int count = 0;
-    #define point(x,y) if (count < 1024*10) { data[2*count+0] = x; data[2*count+1] = y; count++; }
+    int *count = (int*)vdb_push_bytes(0, 4);
 
     static float t = 0.0f;
     float pi = 3.14f;
     float two_pi = 2.0f*3.14f;
     float pi_half = 3.14f/2.0f;
-    float dur = 3.2f;
+    float dur = 3.5f;
 
-    #if 1
-    for (int k = 0; k < 40; k++)
-    for (int i = 0; i < 128; i++)
+    #if 0
+    int n1 = 30;
+    int n2 = 32;
+    for (int k = 0; k < n1; k++)
+    for (int i = 0; i < n2; i++)
     {
-        float x = -1.0f + 2.0f*i/128.0f;
-        float a = pi*x + two_pi*(t/dur) + pi*k/40.0f;
-        float y = 0.1f*sinf(a) + (-1.0f+2.0f*k/40.0f);
-        point(x, y);
+        float x = -1.0f + 2.0f*i/n2;
+        float a = pi*x + two_pi*(t/dur) + pi*k/n1;
+        float y = 0.1f*sinf(a) + (-1.0f+2.0f*k/n1);
+        *count = *count + vdb_point(k % 10, x, y);
     }
     #else
     float t1 = 0.0f;
@@ -52,19 +62,15 @@ void draw_cool_spinny_thing(float dt)
         float a1 = (two_pi/6.0f)*(i*(t1-t2) + 12.0f*t2 - 1.5f);
         float a2 = (two_pi/6.0f)*(i*(t1-t2) + 11.5f*t2 - 1.5f + 0.5f*t1);
         float a3 = (two_pi/6.0f)*(i*(t1-t2) + 6.0f*t1 + 12.0f*t2 - 1.5f);
-        point(r1*cosf(a1), r1*sinf(a1));
-        point(r2*cosf(a2), r2*sinf(a2));
-        point(r3*cosf(a3), r3*sinf(a3));
+        *count = *count + vdb_point(2, r1*cosf(a1), r1*sinf(a1));
+        *count = *count + vdb_point(8, r2*cosf(a2), r2*sinf(a2));
+        *count = *count + vdb_point(6, r3*cosf(a3), r3*sinf(a3));
     }
     #endif
 
     t += dt;
     if (t > dur)
         t -= dur;
-
-    vdb_push_s32(count);
-    for (int i = 0; i < 2*count; i++)
-        vdb_push_r32(data[i]);
 }
 
 int main()

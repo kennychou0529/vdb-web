@@ -16,6 +16,7 @@ void vdb_end();
 // these push data to the buffer that is sent on each vdb_end.
 // You can use these in conjunction with your own parser at the
 // browser-side to implement custom rendering.
+void *vdb_push_bytes(const void *data, int count);
 int vdb_push_s32(int x);
 int vdb_push_r32(float x);
 
