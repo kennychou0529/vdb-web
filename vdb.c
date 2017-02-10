@@ -84,7 +84,6 @@ int vdb_set_listen_port(int port)
 }
 
 #ifdef VDB_WINDOWS
-void vdb_sleep(int milliseconds) { Sleep(milliseconds); }
 int vdb_wait_data_ready()
 {
     WaitForSingleObject(vdb_shared->send_semaphore, INFINITE);
@@ -97,12 +96,13 @@ int vdb_wait_data_ready()
 int vdb_signal_data_sent()  { vdb_shared->busy = 0; return 1; }
 int vdb_poll_data_sent()    { return (InterlockedCompareExchange(&vdb_shared->busy, 1, 0) == 0) }
 int vdb_signal_data_ready() { vdb_shared->busy = 0; ReleaseSemaphore(vdb_shared->send_semaphore, 1, 0); return 1; } // @ mfence, writefence
+void vdb_sleep(int ms)      { Sleep(ms); }
 #else
-void vdb_sleep(int milliseconds) { usleep(milliseconds*1000); }
 int vdb_wait_data_ready()   { int val = 0; return  read(vdb_shared->ready[0], &val, sizeof(val)) == sizeof(val); }
 int vdb_poll_data_sent()    { int val = 0; return   read(vdb_shared->done[0], &val, sizeof(val)) == sizeof(val); }
 int vdb_signal_data_ready() { int one = 1; return write(vdb_shared->ready[1], &one, sizeof(one)) == sizeof(one); }
 int vdb_signal_data_sent()  { int one = 1; return  write(vdb_shared->done[1], &one, sizeof(one)) == sizeof(one); }
+void vdb_sleep(int ms)      { usleep(ms*1000); }
 #endif
 
 #ifdef VDB_WINDOWS
