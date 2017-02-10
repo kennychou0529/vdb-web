@@ -1,11 +1,74 @@
+o server: memory management
+    Main thread writes to command buffer (resides in main address space)
+    At vdb end, if can_send, command buffer is packed into work buffer
+    and swapped with send buffer
+    ... Actually don't need to swap???
+    Potentially, to easier allow send thread to 'preempt' vdb_end and
+    decide to take over the work buffer whenever it wants. Although that
+    doesn't really require swapping either, now that the main has an
+    additional set of buffers.
+
+    However, for the raw buffer manipulation api, swapping is needed,
+    since you write directly to the buffer during call submission.
+
+o What about views? Precompute on server?
+    vdb_xrange(0, bins_t, -1, +1)
+    vdb_yrange(0, bins_r, -1, +1) (from x0x1, to x0x1)
+
+    How does this interact with user-controlled cameras?
+    And vdb_map??
+
+o If we knew the camera and viewport, we could actually project ourselves
+    -> Enough with 2 bytes per coordinate (-32k, +32k) (fixpoint)
+
+o Do we only have one 'view' per vdb_begin/end?
+    Might work well enough
+    For example, 3D view of ray + 2D view of image
+    Could have two begin/end's, and display both in browser
+
+o Overlay views in browser?
+
+o browser: color linking
+    In browser:
+        Can link 'color' to both
+        -> Indexed palette (qualitative, sequential, gray, ...)
+        (see matlabcolors.jpg)
+        -> Scale of geometry
+        Either or both
+
+o misc: Labels
+    A string of bytes is sent along with the command buffer
+    describing where (x,y) and what (%s).
+        if (vdb_map(x, y))
+        {
+            vdb_label(x, y, "%s", ...);
+        }
+
+        -->
+        if (x,y is closest to latest cursor position)
+        {
+            cmdbuf.label_x = x;
+            cmdbuf.label_y = y;
+            cmdbuf.label_s = s;
+        }
+    Cursor position is received from browser per frame?
 
 o server: WebGL + offscreen canvas for text
+    + Can send color and size per line and point efficiently!
+    + Don't need to implement line clipping!
     http://murfy.de/read/webgl-text-rendering
-    Don't need to implement line clipping!
     https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
     https://webglfundamentals.org/
+    https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html
+    http://twgljs.org/
 
 o server: Batching and draw commands
+
+o server: List all addresses that it is available on
+    Punch ports through internet???
+    upnp, port mapping
+    https://github.com/kzahel/web-server-chrome
+    See https://webglfundamentals.org/webgl/lessons/webgl-setup-and-installation.html
 
 o server: msg queue, poll.
 
@@ -36,6 +99,9 @@ o server:
     send_thread should be able to check if the work-buffer is ready to be sent
     (cause it might not have been signalled to be sent because send_thread was
     busy, and it might take a long time before it can be signalled again).
+
+o server: Static textures
+    Not updated every loop iteration
 
 o brower: Logging console
 o browser: Hide or show axes

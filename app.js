@@ -19,15 +19,53 @@ function render()
         var view = new DataView(cmd_data);
 
         var offset = 0;
-        var count = view.getInt32(offset, little_endian); offset += 4;
+        var num_line2 = view.getUint32(offset, little_endian); offset += 4;
+        var num_line3 = view.getUint32(offset, little_endian); offset += 4;
+        var num_point2 = view.getUint32(offset, little_endian); offset += 4;
+        var num_point3 = view.getUint32(offset, little_endian); offset += 4;
 
         ctx.fillStyle="#1a1a1a";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fill();
 
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < num_line2; i++)
         {
             var color = view.getUint8(offset, little_endian); offset += 1;
+            var x1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+
+            var a = cvs.height/cvs.width;
+            var x1 = (0.5+0.5*x1_ndc*a)*cvs.width;
+            var y1 = (0.5+0.5*y1_ndc)*cvs.height;
+            var x2 = (0.5+0.5*x2_ndc*a)*cvs.width;
+            var y2 = (0.5+0.5*y2_ndc)*cvs.height;
+
+            ctx.strokeStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        for (var i = 0; i < num_line3; i++)
+        {
+            var color = view.getUint8(offset, little_endian); offset += 1;
+            var x1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var z1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var z2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+        }
+
+        for (var i = 0; i < num_point2; i++)
+        {
+            var color = view.getUint8(offset, little_endian); offset += 1;
+            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+
                  if (color == 0) ctx.fillStyle = "#990343";
             else if (color == 1) ctx.fillStyle = "#D33F4D";
             else if (color == 2) ctx.fillStyle = "#F56D47";
@@ -41,8 +79,6 @@ function render()
             else                 ctx.fillStyle = "#5E509F";
             ctx.beginPath();
 
-            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
             var a = cvs.height/cvs.width;
             var x = (0.5+0.5*x_ndc*a)*cvs.width;
             var y = (0.5+0.5*y_ndc)*cvs.height;
@@ -53,6 +89,12 @@ function render()
             ctx.fill();
         }
 
+        for (var i = 0; i < num_point3; i++)
+        {
+            var color = view.getUint8(offset, little_endian); offset += 1;
+            var x = view.getFloat32(offset, little_endian); offset += 4;
+            var y = view.getFloat32(offset, little_endian); offset += 4;
+        }
     }
     else
     {

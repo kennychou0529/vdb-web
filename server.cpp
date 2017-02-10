@@ -6,28 +6,15 @@
 #include <stdlib.h>
 #include <math.h>
 
-int vdb_point(unsigned char color, float x, float y)
-{
-    if (vdb_push_bytes(&color, 1) &&
-        vdb_push_bytes(&x, 4) &&
-        vdb_push_bytes(&y, 4))
-        return 1;
-    else
-        return 0;
-}
-
 void draw_cool_spinny_thing(float dt)
 {
-    int *count_ptr = (int*)vdb_push_bytes(0, 4);
-    int count = 0;
-
     static float t = 0.0f;
     float pi = 3.14f;
     float two_pi = 2.0f*3.14f;
     float pi_half = 3.14f/2.0f;
     float dur = 3.5f;
 
-    #if 1
+    #if 0
     int n1 = 30;
     int n2 = 32;
     for (int k = 0; k < n1; k++)
@@ -36,7 +23,8 @@ void draw_cool_spinny_thing(float dt)
         float x = -1.0f + 2.0f*i/n2;
         float a = pi*x + two_pi*(t/dur) + pi*k/n1;
         float y = 0.1f*sinf(a) + (-1.0f+2.0f*k/n1);
-        count += vdb_point(k % 10, x, y);
+        vdb_color1i(k % 10);
+        vdb_point2(x, y);
     }
     #else
     float t1 = 0.0f;
@@ -63,13 +51,13 @@ void draw_cool_spinny_thing(float dt)
         float a1 = (two_pi/6.0f)*(i*(t1-t2) + 12.0f*t2 - 1.5f);
         float a2 = (two_pi/6.0f)*(i*(t1-t2) + 11.5f*t2 - 1.5f + 0.5f*t1);
         float a3 = (two_pi/6.0f)*(i*(t1-t2) + 6.0f*t1 + 12.0f*t2 - 1.5f);
-        count += vdb_point(2, r1*cosf(a1), r1*sinf(a1));
-        count += vdb_point(8, r2*cosf(a2), r2*sinf(a2));
-        count += vdb_point(6, r3*cosf(a3), r3*sinf(a3));
+        vdb_color1i(2); vdb_point2(r1*cosf(a1), r1*sinf(a1));
+        vdb_color1i(8); vdb_point2(r2*cosf(a2), r2*sinf(a2));
+        vdb_color1i(6); vdb_point2(r3*cosf(a3), r3*sinf(a3));
     }
-    #endif
 
-    *count_ptr = count;
+    vdb_color1i(1); vdb_line2(0.0f, 0.0f, 0.5f, 0.5f);
+    #endif
 
     t += dt;
     if (t > dur)

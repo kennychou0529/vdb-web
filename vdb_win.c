@@ -196,6 +196,12 @@ int vdb_begin() // @ vdb_begin(dt)
     {
         return 0;
     }
+    vdb_cmdbuf->num_line2 = 0;
+    vdb_cmdbuf->num_line3 = 0;
+    vdb_cmdbuf->num_point2 = 0;
+    vdb_cmdbuf->num_point3 = 0;
+    // @ command buffer initialization
+    vdb_cmdbuf->color = 0;
     return 1;
 }
 
@@ -208,6 +214,13 @@ void vdb_end()
     // and we can perform the swap.
     if (InterlockedCompareExchange(&vdb_shared->busy, 1, 0) == 0)
     {
+        vdb_shared->work_buffer_used = 0;
+        if (!vdb_serialize_cmdbuf())
+        {
+            vdb_log_once("Too much geometry was drawn. Try increasing the work buffer size.\n");
+            vdb_shared->work_buffer_used = 0;
+        }
+
         char *new_work_buffer = vdb_shared->send_buffer;
         vdb_shared->send_buffer = vdb_shared->work_buffer;
         vdb_shared->bytes_to_send = vdb_shared->work_buffer_used;
