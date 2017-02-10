@@ -75,7 +75,7 @@ void vdb_recv_thread(int port)
         {
             if (vdb_listen_port == 0)
             {
-                printf("[vdb] Warning: You have not set the listening port for vdb. Using 8000.\n"
+                vdb_log_once("You have not set the listening port for vdb. Using 8000.\n"
                        "You can use a different port by calling vdb_set_listen_port(<port>),\n"
                        "or by #define VDB_LISTEN_PORT <port> before #including vdb.c.\n"
                        "Valid ports are between 1024 and 65535.\n");
@@ -88,6 +88,7 @@ void vdb_recv_thread(int port)
                 usleep(1000*1000);
                 continue;
             }
+            vdb_log_once("Visualization is live at <Your IP>:%d\n", vdb_listen_port);
         }
         if (!has_client_socket)
         {
@@ -183,7 +184,7 @@ int vdb_begin()
 {
     if (vdb_listen_port < 1024 || vdb_listen_port > 65535)
     {
-        printf("[vdb] Error: You have requested a vdb_listen_port (%d) outside the valid region of 1024-65535.\n", vdb_listen_port);
+        vdb_err_once("You have requested a vdb_listen_port (%d) outside the valid range 1024-65535.\n", vdb_listen_port);
         return 0;
     }
 
@@ -235,7 +236,12 @@ int vdb_begin()
     {
         return 0;
     }
-
+    vdb_cmdbuf->num_line2 = 0;
+    vdb_cmdbuf->num_line3 = 0;
+    vdb_cmdbuf->num_point2 = 0;
+    vdb_cmdbuf->num_point3 = 0;
+    // @ command buffer initialization
+    vdb_cmdbuf->color = 0;
     return 1;
 }
 
@@ -248,6 +254,13 @@ void vdb_end()
 
     if (!vs->busy)
     {
+        vs->work_buffer_used = 0;
+        if (!vdb_serialize_cmdbuf())
+        {
+            vdb_log_once("Too much geometry was drawn. Try increasing the work buffer size.\n");
+            vs->work_buffer_used = 0;
+        }
+
         char *new_work_buffer = vs->send_buffer;
 
         vs->send_buffer = vs->work_buffer;

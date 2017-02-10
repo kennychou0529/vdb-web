@@ -53,9 +53,6 @@ int vdb_serialize_cmdbuf();
 #if defined(_WIN32) || defined(_WIN64)
 #include "vdb_win.c"
 #else
-#warning "Todo: Implement nice user-feedback logging for unix"
-#error "Todo: Implement serialize in end()"
-#error "Todo: Initialize vdb_cmdbuf!!"
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <signal.h>
