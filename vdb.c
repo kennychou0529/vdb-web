@@ -8,7 +8,9 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
-#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS // @ Replace sprintf
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #else
 #define VDB_UNIX
 #include <sys/mman.h>
@@ -305,32 +307,33 @@ int vdb_begin()
     if (!vdb_shared)
     {
         #ifdef VDB_UNIX
-        // Share memory between main process and child processes
-        vdb_shared = (vdb_shared_t*)mmap(NULL, sizeof(vdb_shared_t), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-        if (vdb_shared == MAP_FAILED)
+        // Allocate, zero-initialize and share with any child processes
+        vdb_shared = (vdb_shared_t*)mmap(NULL, sizeof(vdb_shared_t),
+                                         PROT_READ|PROT_WRITE,
+                                         MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+        if (vdb_shared == MAP_FAILED) vdb_shared = 0;
+        #else
+        // Allocate and zero-initialize
+        vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1);
+        #endif
+
+        if (!vdb_shared)
         {
             vdb_err_once("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE\n");
-            vdb_shared = 0;
             vdb_shared->critical_error = 1;
             return 0;
         }
+
+        #ifdef VDB_UNIX
         vdb_critical(pipe(vdb_shared->ready) != -1);
         vdb_critical(pipe2(vdb_shared->done, O_NONBLOCK) != -1);
-        vdb_signal_data_sent(); // Needed for first vdb_end call
-        // Create recv_thread
         {
             pid_t pid = fork();
             vdb_critical(pid != -1);
             if (pid == 0) { vdb_recv_thread(); _exit(0); }
         }
+        vdb_signal_data_sent(); // Needed for first vdb_end call
         #else
-        vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1); // zero-initialize
-        if (!vdb_shared)
-        {
-            vdb_err_once("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE.\n");
-            vdb_shared->critical_error = 1;
-            return 0;
-        }
         vdb_shared->send_semaphore = CreateSemaphore(0, 0, 1, 0);
         CreateThread(0, 0, vdb_recv_thread, NULL, 0, 0);
         CreateThread(0, 0, vdb_send_thread, NULL, 0, 0);
@@ -338,7 +341,7 @@ int vdb_begin()
 
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
         vdb_shared->send_buffer = vdb_shared->swapbuffer2;
-        // remaining parameters are zero-initialized by mmap
+        // Remaining parameters should be initialized to zero
     }
     if (vdb_shared->critical_error)
     {
