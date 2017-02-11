@@ -1,3 +1,58 @@
+demo:
+    all stages of the hough transform
+    show interactive mode and stream mode
+    live fisheye calibration
+    v4l2/ffmpeg camera input
+
+browser: camera
+    click on element to orbit around it
+
+o server: mapping, hovering, labels and pausing
+    - Problem: In stream-mode, the server cannot necessarily
+    reproduce the visualization, because the data might be updated.
+    Hence, if the browser has paused to inspect, and would like
+    to hover over an element to see its label (and maybe do some
+    conditional drawing), the server cannot reproduce the correct
+    label.
+    - Solution: Server _stores_ labels for each drawn element, but
+    only sends the ones that are necessary. Will require tremendous
+    amounts of storage though!! 100k point x 64 byte = 6 mb
+        for i=1..n
+            vdb_label("Votes: %d\nr: %.2f\nt: %.2f", ...)
+            vdb_color1f(votes/peak);
+            vdb_point(t, r);
+    - And what about conditional draw calls?
+        if (vdbMap(t,r)) { draw many points... } like in hough transform
+        Storing the conditional draw calls for each possible outcome
+        would require _way_ much memory.
+
+    ALTERNATIVELY: At an additional burder of the programmer
+
+    + Can do conditional drawing
+    + Can pause _into_ interactive mode
+        (although I suppose you could always do that, but at the risk
+        of the programmer that you might change values that should not
+        be changed at runtime!!)
+    - Less storage requirements, unless the copied data is gigantic
+
+    if (vdb_begin()) <- Can check if the browser has currently paused execution
+    {
+        if (vdb_shouldupdate()) <- true if not paused
+        {
+            // copy hough table into local variable
+        }
+
+        vdb_end();
+    }
+
+    ALTERNATIVELY: Limit inspection like that to interactive-mode???
+
+o server/browser: Filter draw-calls by color!!
+    Can solve the visualize-hough-support-points problem.
+    Each line and its support points are labelled with the same color.
+    Then, in the browser, we can filter by one color at a time.
+    That won't really work if a point can support multiple lines??
+
 o server: memory management
     Main thread writes to command buffer (resides in main address space)
     At vdb end, if can_send, command buffer is packed into work buffer
@@ -12,8 +67,14 @@ o server: memory management
     since you write directly to the buffer during call submission.
 
 o What about views? Precompute on server?
-    vdb_xrange(0, bins_t, -1, +1)
-    vdb_yrange(0, bins_r, -1, +1) (from x0x1, to x0x1)
+    vdb_xview(left, right) sets viewport in window
+    vdb_xrange(left, right) maps [left,right] to viewport edges
+
+    vdb_xview(-1,+1);
+    vdb_yview(-1,+1);
+    vdb_xrange(t_min, t_max);
+    vdb_yrange(r_min, r_max);
+    vdb_point(t, r);
 
     How does this interact with user-controlled cameras?
     And vdb_map??

@@ -1,3 +1,4 @@
+// #define VDB_LOG_DEBUG
 #define VDB_LISTEN_PORT 8000
 #include "vdb.h"
 #include "vdb.c"
