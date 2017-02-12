@@ -437,10 +437,12 @@ int vdb_push_r32(float x)
 #define VDB_NUM_POINT3 (1024*100)
 #define VDB_NUM_LINE2 (1024*100)
 #define VDB_NUM_LINE3 (1024*100)
+#define VDB_NUM_RECT (1024*100)
 struct vdb_point2_t { uint8_t c; float x,y; };
 struct vdb_point3_t { uint8_t c; float x,y,z; };
 struct vdb_line2_t  { uint8_t c; float x1,y1,x2,y2; };
 struct vdb_line3_t  { uint8_t c; float x1,y1,z1,x2,y2,z2; };
+struct vdb_rect_t   { uint8_t c; float x,y,w,h; };
 struct vdb_cmdbuf_t
 {
     uint8_t color;
@@ -448,10 +450,12 @@ struct vdb_cmdbuf_t
     uint32_t num_line3;
     uint32_t num_point2;
     uint32_t num_point3;
+    uint32_t num_rect;
     vdb_line2_t  line2[VDB_NUM_LINE2];
     vdb_line3_t  line3[VDB_NUM_LINE3];
     vdb_point2_t point2[VDB_NUM_POINT2];
     vdb_point3_t point3[VDB_NUM_POINT3];
+    vdb_rect_t   rect[VDB_NUM_RECT];
 };
 static vdb_cmdbuf_t vdb_cmdbuf_static = {0}; // @ Might fail if too big; use calloc
 static vdb_cmdbuf_t *vdb_cmdbuf = &vdb_cmdbuf_static;
@@ -462,6 +466,7 @@ void vdb_initialize_cmdbuf()
     vdb_cmdbuf->num_line3 = 0;
     vdb_cmdbuf->num_point2 = 0;
     vdb_cmdbuf->num_point3 = 0;
+    vdb_cmdbuf->num_rect = 0;
     // @ command buffer initialization
     vdb_cmdbuf->color = 0;
 }
@@ -473,6 +478,7 @@ int vdb_serialize_cmdbuf()
     if (!vdb_push_u32(b->num_line3))  return 0;
     if (!vdb_push_u32(b->num_point2)) return 0;
     if (!vdb_push_u32(b->num_point3)) return 0;
+    if (!vdb_push_u32(b->num_rect)) return 0;
     for (uint32_t i = 0; i < b->num_line2; i++)
     {
         if (!vdb_push_u08(b->line2[i].c))  return 0;
@@ -502,6 +508,14 @@ int vdb_serialize_cmdbuf()
         if (!vdb_push_u08(b->point3[i].c)) return 0;
         if (!vdb_push_r32(b->point3[i].x)) return 0;
         if (!vdb_push_r32(b->point3[i].y)) return 0;
+    }
+    for (uint32_t i = 0; i < b->num_rect; i++)
+    {
+        if (!vdb_push_u08(b->rect[i].c)) return 0;
+        if (!vdb_push_r32(b->rect[i].x)) return 0;
+        if (!vdb_push_r32(b->rect[i].y)) return 0;
+        if (!vdb_push_r32(b->rect[i].w)) return 0;
+        if (!vdb_push_r32(b->rect[i].h)) return 0;
     }
 
     return 1;
@@ -574,5 +588,19 @@ void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
         p->y2 = y2;
         p->z2 = z2;
         vdb_cmdbuf->num_line3++;
+    }
+}
+
+void vdb_rect(float x, float y, float w, float h)
+{
+    if (vdb_cmdbuf && vdb_cmdbuf->num_rect < VDB_NUM_RECT)
+    {
+        vdb_rect_t *p = &vdb_cmdbuf->rect[vdb_cmdbuf->num_rect];
+        p->c = vdb_cmdbuf->color;
+        p->x = x;
+        p->y = y;
+        p->w = w;
+        p->h = h;
+        vdb_cmdbuf->num_rect++;
     }
 }

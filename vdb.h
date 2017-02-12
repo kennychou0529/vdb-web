@@ -18,6 +18,7 @@ void vdb_point2(float x, float y);
 void vdb_point3(float x, float y, float z);
 void vdb_line2(float x1, float y1, float x2, float y2);
 void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2);
+void vdb_rect(float x, float y, float w, float h);
 
 // You probably don't want to mess with this, but if you do,
 // these push data to the buffer that is sent on each vdb_end.
