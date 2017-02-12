@@ -296,8 +296,21 @@ int vdb_recv_thread()
     return 0;
 }
 
-void vdb_initialize_cmdbuf(); // Forward-declare (see below)
-int vdb_serialize_cmdbuf(); // Forward-declare (see below)
+static uint32_t *vdb_draw_count = 0;
+
+void *vdb_push_bytes(const void *data, int count)
+{
+    if (vdb_shared->work_buffer_used + count <= VDB_WORK_BUFFER_SIZE)
+    {
+        const char *src = (const char*)data;
+              char *dst = vdb_shared->work_buffer + vdb_shared->work_buffer_used;
+        if (src) memcpy(dst, src, count);
+        else     memset(dst, 0, count);
+        vdb_shared->work_buffer_used += count;
+        return (void*)dst;
+    }
+    return 0;
+}
 
 int vdb_begin()
 {
@@ -355,7 +368,9 @@ int vdb_begin()
     {
         return 0;
     }
-    vdb_initialize_cmdbuf();
+    vdb_shared->work_buffer_used = 0;
+    vdb_draw_count = (uint32_t*)vdb_push_bytes(0, sizeof(uint32_t));
+    *vdb_draw_count = 0;
     return 1;
 }
 
@@ -364,13 +379,6 @@ void vdb_end()
     vdb_shared_t *vs = vdb_shared;
     if (vdb_poll_data_sent()) // Check if send_thread has finished sending data
     {
-        vs->work_buffer_used = 0;
-        if (!vdb_serialize_cmdbuf())
-        {
-            vdb_log_once("Too much geometry was drawn. Try increasing the work buffer size.\n");
-            vs->work_buffer_used = 0;
-        }
-
         char *new_work_buffer = vs->send_buffer;
         vs->send_buffer = vs->work_buffer;
         vs->bytes_to_send = vs->work_buffer_used;
@@ -383,20 +391,6 @@ void vdb_end()
 }
 
 // Pushbuffer API implementation
-
-void *vdb_push_bytes(const void *data, int count)
-{
-    if (vdb_shared->work_buffer_used + count <= VDB_WORK_BUFFER_SIZE)
-    {
-        const char *src = (const char*)data;
-              char *dst = vdb_shared->work_buffer + vdb_shared->work_buffer_used;
-        if (src) memcpy(dst, src, count);
-        else     memset(dst, 0, count);
-        vdb_shared->work_buffer_used += count;
-        return (void*)dst;
-    }
-    return 0;
-}
 
 int vdb_push_u08(uint8_t x)
 {
@@ -433,99 +427,18 @@ int vdb_push_r32(float x)
 
 // Public API implementation
 
-#define VDB_NUM_POINT2 (1024*100)
-#define VDB_NUM_POINT3 (1024*100)
-#define VDB_NUM_LINE2 (1024*100)
-#define VDB_NUM_LINE3 (1024*100)
-#define VDB_NUM_RECT (1024*100)
-struct vdb_point2_t { uint8_t c; float x,y; };
-struct vdb_point3_t { uint8_t c; float x,y,z; };
-struct vdb_line2_t  { uint8_t c; float x1,y1,x2,y2; };
-struct vdb_line3_t  { uint8_t c; float x1,y1,z1,x2,y2,z2; };
-struct vdb_rect_t   { uint8_t c; float x,y,w,h; };
-struct vdb_cmdbuf_t
-{
-    uint8_t color;
-    uint32_t num_line2;
-    uint32_t num_line3;
-    uint32_t num_point2;
-    uint32_t num_point3;
-    uint32_t num_rect;
-    vdb_line2_t  line2[VDB_NUM_LINE2];
-    vdb_line3_t  line3[VDB_NUM_LINE3];
-    vdb_point2_t point2[VDB_NUM_POINT2];
-    vdb_point3_t point3[VDB_NUM_POINT3];
-    vdb_rect_t   rect[VDB_NUM_RECT];
-};
-static vdb_cmdbuf_t vdb_cmdbuf_static = {0}; // @ Might fail if too big; use calloc
-static vdb_cmdbuf_t *vdb_cmdbuf = &vdb_cmdbuf_static;
-
-void vdb_initialize_cmdbuf()
-{
-    vdb_cmdbuf->num_line2 = 0;
-    vdb_cmdbuf->num_line3 = 0;
-    vdb_cmdbuf->num_point2 = 0;
-    vdb_cmdbuf->num_point3 = 0;
-    vdb_cmdbuf->num_rect = 0;
-    // @ command buffer initialization
-    vdb_cmdbuf->color = 0;
-}
-
-int vdb_serialize_cmdbuf()
-{
-    vdb_cmdbuf_t *b = vdb_cmdbuf;
-    if (!vdb_push_u32(b->num_line2))  return 0;
-    if (!vdb_push_u32(b->num_line3))  return 0;
-    if (!vdb_push_u32(b->num_point2)) return 0;
-    if (!vdb_push_u32(b->num_point3)) return 0;
-    if (!vdb_push_u32(b->num_rect)) return 0;
-    for (uint32_t i = 0; i < b->num_line2; i++)
-    {
-        if (!vdb_push_u08(b->line2[i].c))  return 0;
-        if (!vdb_push_r32(b->line2[i].x1)) return 0;
-        if (!vdb_push_r32(b->line2[i].y1)) return 0;
-        if (!vdb_push_r32(b->line2[i].x2)) return 0;
-        if (!vdb_push_r32(b->line2[i].y2)) return 0;
-    }
-    for (uint32_t i = 0; i < b->num_line3; i++)
-    {
-        if (!vdb_push_u08(b->line3[i].c))  return 0;
-        if (!vdb_push_r32(b->line3[i].x1)) return 0;
-        if (!vdb_push_r32(b->line3[i].y1)) return 0;
-        if (!vdb_push_r32(b->line3[i].z1)) return 0;
-        if (!vdb_push_r32(b->line3[i].x2)) return 0;
-        if (!vdb_push_r32(b->line3[i].y2)) return 0;
-        if (!vdb_push_r32(b->line3[i].z2)) return 0;
-    }
-    for (uint32_t i = 0; i < b->num_point2; i++)
-    {
-        if (!vdb_push_u08(b->point2[i].c)) return 0;
-        if (!vdb_push_r32(b->point2[i].x)) return 0;
-        if (!vdb_push_r32(b->point2[i].y)) return 0;
-    }
-    for (uint32_t i = 0; i < b->num_point3; i++)
-    {
-        if (!vdb_push_u08(b->point3[i].c)) return 0;
-        if (!vdb_push_r32(b->point3[i].x)) return 0;
-        if (!vdb_push_r32(b->point3[i].y)) return 0;
-    }
-    for (uint32_t i = 0; i < b->num_rect; i++)
-    {
-        if (!vdb_push_u08(b->rect[i].c)) return 0;
-        if (!vdb_push_r32(b->rect[i].x)) return 0;
-        if (!vdb_push_r32(b->rect[i].y)) return 0;
-        if (!vdb_push_r32(b->rect[i].w)) return 0;
-        if (!vdb_push_r32(b->rect[i].h)) return 0;
-    }
-
-    return 1;
-}
+static unsigned char vdb_current_color = 0;
+static unsigned char vdb_mode_point2 = 1;
+static unsigned char vdb_mode_point3 = 2;
+static unsigned char vdb_mode_line2 = 3;
+static unsigned char vdb_mode_line3 = 4;
+static unsigned char vdb_mode_rect = 5;
 
 void vdb_color1i(int c)
 {
     if (c < 0) c = 0;
     if (c > 255) c = 255;
-    vdb_cmdbuf->color = (unsigned char)(c);
+    vdb_current_color = (unsigned char)(c);
 }
 
 void vdb_color1f(float c)
@@ -533,74 +446,59 @@ void vdb_color1f(float c)
     int ci = (int)(c*255.0f);
     if (ci < 0) ci = 0;
     if (ci > 255) ci = 255;
-    vdb_cmdbuf->color = (unsigned char)(ci);
+    vdb_current_color = (unsigned char)(ci);
 }
 
 void vdb_point2(float x, float y)
 {
-    if (vdb_cmdbuf && vdb_cmdbuf->num_point2 < VDB_NUM_POINT2)
-    {
-        vdb_point2_t *p = &vdb_cmdbuf->point2[vdb_cmdbuf->num_point2];
-        p->c = vdb_cmdbuf->color;
-        p->x = x;
-        p->y = y;
-        vdb_cmdbuf->num_point2++;
-    }
+    vdb_push_u08(vdb_mode_point2);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x);
+    vdb_push_r32(y);
+    (*vdb_draw_count)++;
 }
 
 void vdb_point3(float x, float y, float z)
 {
-    if (vdb_cmdbuf && vdb_cmdbuf->num_point3 < VDB_NUM_POINT3)
-    {
-        vdb_point3_t *p = &vdb_cmdbuf->point3[vdb_cmdbuf->num_point3];
-        p->c = vdb_cmdbuf->color;
-        p->x = x;
-        p->y = y;
-        p->z = z;
-        vdb_cmdbuf->num_point3++;
-    }
+    vdb_push_u08(vdb_mode_point3);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x);
+    vdb_push_r32(y);
+    vdb_push_r32(z);
+    (*vdb_draw_count)++;
 }
 
 void vdb_line2(float x1, float y1, float x2, float y2)
 {
-    if (vdb_cmdbuf && vdb_cmdbuf->num_line2 < VDB_NUM_LINE2)
-    {
-        vdb_line2_t *p = &vdb_cmdbuf->line2[vdb_cmdbuf->num_line2];
-        p->c = vdb_cmdbuf->color;
-        p->x1 = x1;
-        p->y1 = y1;
-        p->x2 = x2;
-        p->y2 = y2;
-        vdb_cmdbuf->num_line2++;
-    }
+    vdb_push_u08(vdb_mode_line2);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x1);
+    vdb_push_r32(y1);
+    vdb_push_r32(x2);
+    vdb_push_r32(y2);
+    (*vdb_draw_count)++;
 }
 
 void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
 {
-    if (vdb_cmdbuf && vdb_cmdbuf->num_line3 < VDB_NUM_LINE3)
-    {
-        vdb_line3_t *p = &vdb_cmdbuf->line3[vdb_cmdbuf->num_line3];
-        p->c = vdb_cmdbuf->color;
-        p->x1 = x1;
-        p->y1 = y1;
-        p->z1 = z1;
-        p->x2 = x2;
-        p->y2 = y2;
-        p->z2 = z2;
-        vdb_cmdbuf->num_line3++;
-    }
+    vdb_push_u08(vdb_mode_line3);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x1);
+    vdb_push_r32(y1);
+    vdb_push_r32(z1);
+    vdb_push_r32(x2);
+    vdb_push_r32(y2);
+    vdb_push_r32(z2);
+    (*vdb_draw_count)++;
 }
 
 void vdb_rect(float x, float y, float w, float h)
 {
-    if (vdb_cmdbuf && vdb_cmdbuf->num_rect < VDB_NUM_RECT)
-    {
-        vdb_rect_t *p = &vdb_cmdbuf->rect[vdb_cmdbuf->num_rect];
-        p->c = vdb_cmdbuf->color;
-        p->x = x;
-        p->y = y;
-        p->w = w;
-        p->h = h;
-        vdb_cmdbuf->num_rect++;
-    }
+    vdb_push_u08(vdb_mode_rect);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x);
+    vdb_push_r32(y);
+    vdb_push_r32(w);
+    vdb_push_r32(h);
+    (*vdb_draw_count)++;
 }

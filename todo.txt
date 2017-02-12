@@ -4,6 +4,14 @@ demo:
     live fisheye calibration
     v4l2/ffmpeg camera input
 
+o browser/server: log data
+
+o webgl/server: Z-buffer and z-ordering
+    Need to respect user's draw call ordering!!!
+    Can either do it by not sorting drawcalls across boundaries... somehow
+    Or pass along an additional z coordinate for all 2D drawcalls (already
+    there for 3D drawcalls)
+
 browser: camera
     click on element to orbit around it
 
