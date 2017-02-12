@@ -158,7 +158,7 @@ int vdb_recv_thread()
         {
             return 0;
         }
-        if (!has_listen_socket)
+        if (!tcp_has_listen_socket)
         {
             if (vdb_listen_port == 0)
             {
@@ -177,7 +177,7 @@ int vdb_recv_thread()
             }
             vdb_log_once("Visualization is live at <Your IP>:%d\n", vdb_listen_port);
         }
-        if (!has_client_socket)
+        if (!tcp_has_client_socket)
         {
             vdb_log("Waiting for client\n");
             if (!tcp_accept())
