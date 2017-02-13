@@ -51,7 +51,6 @@ struct vdb_shared_t
     #else
     int bytes_to_send;
     pid_t send_pid;
-    int has_send_thread;
     // These pipes are used for flow control between the main thread and the sending thread
     // The sending thread blocks on a read on pipe_ready, until the main thread signals the
     // pipe by write on pipe_ready. The main thread checks if sending is complete by polling
@@ -60,6 +59,7 @@ struct vdb_shared_t
     int done[2];// [0]: read, [1]: send
     #endif
 
+    int has_send_thread;
     int critical_error;
     int has_connection;
     int work_buffer_used;
@@ -114,6 +114,7 @@ int vdb_send_thread()
     unsigned char *frame; // @ UGLY: form_frame should modify a char *?
     int frame_len;
     vdb_log("Created send thread\n");
+    vdb_sleep(100); // @ RACECOND: Let the parent thread set has_send_thread to 1
     while (!vs->critical_error)
     {
         // blocking until data is signalled ready from main thread
@@ -123,23 +124,24 @@ int vdb_send_thread()
         vdb_form_frame(vs->bytes_to_send, &frame, &frame_len);
         if (!tcp_sendall(frame, frame_len))
         {
-            vdb_log("failed to send frame\n");
+            vdb_log("Failed to send frame\n");
             vdb_critical(vdb_signal_data_sent());
-            return 0;
+            break;
         }
 
         // send the payload
         if (!tcp_sendall(vs->send_buffer, vs->bytes_to_send))
         {
-            vdb_log("failed to send payload\n");
+            vdb_log("Failed to send payload\n");
             vdb_critical(vdb_signal_data_sent());
-            return 0;
+            break;
         }
 
         // signal to main thread that data has been sent
         vdb_critical(vdb_signal_data_sent());
     }
-    return 1;
+    vs->has_send_thread = 0;
+    return 0;
 }
 
 #ifdef VDB_WINDOWS
@@ -252,18 +254,24 @@ int vdb_recv_thread()
         // fork() shares the open file descriptors with the child process, but
         // if a file descriptor is _then_ opened in the parent, it will _not_
         // be shared with the child.
-        if (!vs->has_send_thread) // @ RACECOND: UGLY: Spawn only one sending thread!!!
+        if (!vs->has_send_thread)
         {
             vs->send_pid = fork();
             vdb_critical(vs->send_pid != -1);
             if (vs->send_pid == 0)
             {
-                vs->has_send_thread = 1;
-                vdb_send_thread();
-                vs->has_send_thread = 0;
+                vdb_send_thread(); // vdb_send_thread sets has_send_thread to 0 upon returning
                 _exit(0);
             }
-            vdb_sleep(100); // @ RACECOND: UGLY: Let child process set has_send_thread = 1
+            vs->has_send_thread = 1;
+        }
+        #else
+        // Because we allow it to return on unix, we allow it to return on windows
+        // as well, even though file descriptors are shared anyway.
+        if (!vs->has_send_thread)
+        {
+            CreateThread(0, 0, vdb_send_thread, NULL, 0, 0); // vdb_send_thread sets has_send_thread to 0 upon returning
+            vs->has_send_thread = 1;
         }
         #endif
         if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes)) // @ INCOMPLETE: Assemble frames
@@ -352,7 +360,6 @@ int vdb_begin()
         #else
         vdb_shared->send_semaphore = CreateSemaphore(0, 0, 1, 0);
         CreateThread(0, 0, vdb_recv_thread, NULL, 0, 0);
-        CreateThread(0, 0, vdb_send_thread, NULL, 0, 0);
         #endif
 
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
