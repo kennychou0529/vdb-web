@@ -1,13 +1,16 @@
 <html>
 <head>
     <title>vdebug</title>
-    <link rel="stylesheet" href="app_bright.css">
+    <!-- <link rel="stylesheet" href="app_bright.css"> -->
     <script src="app.js"></script>
 </head>
 <body onload="app_onload()">
     <div id="container">
         <p id="status"></p>
         <canvas width="640" height="480" id="canvas"></canvas>
+
+        <br>
+
         <label for="camera_projection">Camera</label>
         <select name="camera_projection">
           <option value="audi">2D</option>
@@ -15,6 +18,13 @@
           <option value="saab">3D (equidistant)</option>
           <option value="mercedes">3D (orthographic)</option>
         </select>
+
+        <label for="select_viewport">Viewport</label>
+        <select onchange="onchange_select_viewport()" id="select_viewport" name="select_viewport">
+          <option value="letterbox">Letterbox</option>
+          <option value="stretch">Stretch to fit</option>
+        </select>
+
         <label for="color_palette">Colors</label>
         <select id="color_palette" name="color_palette">
           <option value="0">Spectral</option>
@@ -23,7 +33,7 @@
           <option value="3">GreenBlue</option>
           <option value="4">Set 1</option>
         </select>
-        <a class="button" style="float:right;" href="javascript:ws_shutdown_server()">Shutdown</a>
+        <!-- <a class="button" style="float:right;" href="javascript:ws_shutdown_server()">Shutdown</a> -->
     </div>
 </body>
 </html>

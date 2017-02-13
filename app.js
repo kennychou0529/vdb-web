@@ -6,6 +6,46 @@ var has_connection = false;
 var fps = 60;
 var palette_index = 0;
 
+var viewport_xl = 0;
+var viewport_xr = 0;
+var viewport_yb = 0;
+var viewport_yt = 0;
+
+function set_viewport(mode)
+{
+    if (mode === "letterbox")
+    {
+        if (cvs.width > cvs.height)
+        {
+            viewport_xl = (cvs.width-cvs.height)/2.0;
+            viewport_xr = (cvs.width+cvs.height)/2.0;
+            viewport_yb = 0;
+            viewport_yt = cvs.height;
+        }
+        else
+        {
+            viewport_xl = 0;
+            viewport_xr = cvs.width;
+            viewport_yb = (cvs.height-cvs.width)/2.0;
+            viewport_yt = (cvs.height+cvs.width)/2.0;
+        }
+    }
+    if (mode === "stretch")
+    {
+        viewport_xl = 0;
+        viewport_xr = cvs.width;
+        viewport_yb = 0;
+        viewport_yt = cvs.height;
+    }
+}
+
+function onchange_select_viewport()
+{
+    var element = document.getElementById("select_viewport");
+    var mode = element.options[element.selectedIndex].value;
+    set_viewport(mode);
+}
+
 function palette(color)
 {
     var i = palette_index;
@@ -28,6 +68,9 @@ function palette(color)
     return palettes[i][color % (palettes[i].length)];
 }
 
+function x_ndc_to_viewport(x_ndc) { return viewport_xl + (viewport_xr-viewport_xl)*(0.5+0.5*x_ndc); }
+function y_ndc_to_viewport(y_ndc) { return viewport_yb + (viewport_yt-viewport_yb)*(0.5+0.5*y_ndc); }
+
 function render()
 {
     var status = document.getElementById("status");
@@ -46,8 +89,10 @@ function render()
         var offset = 0;
 
         ctx.fillStyle="#2a2a2a";
+        // ctx.fillRect(viewport_xl, viewport_yb, viewport_xr-viewport_xl, viewport_yt-viewport_yb);
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fill();
+
         while (offset < view.byteLength)
         {
             var a = cvs.height/cvs.width;
@@ -57,17 +102,12 @@ function render()
                 var color = view.getUint8(offset, little_endian); offset += 1;
                 var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
                 var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+                var x = x_ndc_to_viewport(x_ndc);
+                var y = y_ndc_to_viewport(y_ndc);
 
                 ctx.fillStyle = palette(color);
                 ctx.beginPath();
-
-                var a = cvs.height/cvs.width;
-                var x = (0.5+0.5*x_ndc*a)*cvs.width;
-                var y = (0.5+0.5*y_ndc)*cvs.height;
                 ctx.fillRect(x-3,y-3,6,6);
-                // ctx.moveTo(x, y);
-                // ctx.arc(x, y, 6, 0, Math.PI*2.0);
-
                 ctx.fill();
             }
             else if (mode == 2) // point3
@@ -84,16 +124,13 @@ function render()
                 var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
                 var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
                 var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-
-                var x1 = (0.5+0.5*x1_ndc*a)*cvs.width;
-                var y1 = (0.5+0.5*y1_ndc)*cvs.height;
-                var x2 = (0.5+0.5*x2_ndc*a)*cvs.width;
-                var y2 = (0.5+0.5*y2_ndc)*cvs.height;
+                var x1 = x_ndc_to_viewport(x1_ndc);
+                var y1 = y_ndc_to_viewport(y1_ndc);
+                var x2 = x_ndc_to_viewport(x2_ndc);
+                var y2 = y_ndc_to_viewport(y2_ndc);
 
                 ctx.strokeStyle = palette(color);
-
                 ctx.lineWidth = 4;
-
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.lineTo(x2, y2);
@@ -116,25 +153,36 @@ function render()
                 var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
                 var w_ndc = view.getFloat32(offset, little_endian); offset += 4;
                 var h_ndc = view.getFloat32(offset, little_endian); offset += 4;
+                var x = x_ndc_to_viewport(x_ndc);
+                var y = y_ndc_to_viewport(y_ndc);
+                var w = x_ndc_to_viewport(x_ndc+w_ndc)-x;
+                var h = x_ndc_to_viewport(x_ndc+w_ndc)-y;
 
                 ctx.fillStyle = palette(color);
                 ctx.beginPath();
-
-                // var a = cvs.height/cvs.width;
-                var a = 1.0;
-                var x = (0.5+0.5*x_ndc*a)*cvs.width;
-                var y = (0.5+0.5*y_ndc)*cvs.height;
-                var w = w_ndc*a*cvs.width;
-                var h = h_ndc*cvs.height;
                 ctx.fillRect(x,y,w,h);
-                // ctx.moveTo(x, y);
-                // ctx.arc(x, y, 6, 0, Math.PI*2.0);
-
                 ctx.fill();
             }
-        }
+            // else if (mode == 6) // circle
+            // {
+            //     var color = view.getUint8(offset, little_endian); offset += 1;
+            //     var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            //     var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            //     var r_ndc = view.getFloat32(offset, little_endian); offset += 4;
 
-        console.log("Offset: " + offset + " len: " + view.byteLength);
+            //     ctx.fillStyle = palette(color);
+            //     ctx.beginPath();
+
+            //     // var a = cvs.height/cvs.width;
+            //     var a = 1.0;
+            //     var x = (0.5+0.5*x_ndc*a)*cvs.width;
+            //     var y = (0.5+0.5*y_ndc)*cvs.height;
+            //     ctx.moveTo(x, y);
+            //     ctx.arc(x, y, 6, 0, Math.PI*2.0);
+
+            //     ctx.fill();
+            // }
+        }
     }
     else
     {
@@ -196,6 +244,7 @@ function app_onload()
         ctx = canvas.getContext("2d");
         loop();
         try_connect();
+        set_viewport("letterbox");
     }
 }
 

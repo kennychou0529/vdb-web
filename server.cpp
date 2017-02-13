@@ -15,16 +15,16 @@ void draw_cool_spinny_thing(float dt)
     float pi_half = 3.14f/2.0f;
     float dur = 3.5f;
 
-    for (int y = 0; y < 4; y++)
-    for (int x = 0; x < 4; x++)
-    {
-        float xx = -1.0f+2.0f*x/4.0f;
-        float yy = -1.0f+2.0f*y/4.0f;
-        float ww = 1.0f/4.0f;
-        float hh = 1.0f/4.0f;
-        vdb_color1i(0);
-        vdb_rect(xx, yy, ww, hh);
-    }
+    // for (int y = 0; y < 4; y++)
+    // for (int x = 0; x < 4; x++)
+    // {
+    //     float xx = -1.0f+2.0f*x/4.0f;
+    //     float yy = -1.0f+2.0f*y/4.0f;
+    //     float ww = 1.0f/4.0f;
+    //     float hh = 1.0f/4.0f;
+    //     vdb_color1i(0);
+    //     vdb_rect(xx, yy, ww, hh);
+    // }
 
 
     #if 0
