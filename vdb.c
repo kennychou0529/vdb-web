@@ -433,6 +433,7 @@ static unsigned char vdb_mode_point3 = 2;
 static unsigned char vdb_mode_line2 = 3;
 static unsigned char vdb_mode_line3 = 4;
 static unsigned char vdb_mode_rect = 5;
+static unsigned char vdb_mode_circle = 6;
 
 void vdb_color1i(int c)
 {
@@ -496,4 +497,13 @@ void vdb_rect(float x, float y, float w, float h)
     vdb_push_r32(y);
     vdb_push_r32(w);
     vdb_push_r32(h);
+}
+
+void vdb_circle(float x, float y, float r)
+{
+    vdb_push_u08(vdb_mode_circle);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_r32(x);
+    vdb_push_r32(y);
+    vdb_push_r32(r);
 }

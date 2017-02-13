@@ -163,25 +163,21 @@ function render()
                 ctx.fillRect(x,y,w,h);
                 ctx.fill();
             }
-            // else if (mode == 6) // circle
-            // {
-            //     var color = view.getUint8(offset, little_endian); offset += 1;
-            //     var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            //     var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            //     var r_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            else if (mode == 6) // circle
+            {
+                var color = view.getUint8(offset, little_endian); offset += 1;
+                var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+                var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+                var r_ndc = view.getFloat32(offset, little_endian); offset += 4;
+                var x = x_ndc_to_viewport(x_ndc);
+                var y = y_ndc_to_viewport(y_ndc);
 
-            //     ctx.fillStyle = palette(color);
-            //     ctx.beginPath();
-
-            //     // var a = cvs.height/cvs.width;
-            //     var a = 1.0;
-            //     var x = (0.5+0.5*x_ndc*a)*cvs.width;
-            //     var y = (0.5+0.5*y_ndc)*cvs.height;
-            //     ctx.moveTo(x, y);
-            //     ctx.arc(x, y, 6, 0, Math.PI*2.0);
-
-            //     ctx.fill();
-            // }
+                ctx.fillStyle = palette(color);
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.arc(x, y, r_ndc, 0, Math.PI*2.0);
+                ctx.fill();
+            }
         }
     }
     else

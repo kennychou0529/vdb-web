@@ -64,9 +64,6 @@ void draw_cool_spinny_thing(float dt)
         float a1 = (two_pi/6.0f)*(i*(t1-t2) + 12.0f*t2 - 1.5f);
         float a2 = (two_pi/6.0f)*(i*(t1-t2) + 11.5f*t2 - 1.5f + 0.5f*t1);
         float a3 = (two_pi/6.0f)*(i*(t1-t2) + 6.0f*t1 + 12.0f*t2 - 1.5f);
-        vdb_color1i(2); vdb_point2(r1*cosf(a1), r1*sinf(a1));
-        vdb_color1i(8); vdb_point2(r2*cosf(a2), r2*sinf(a2));
-        vdb_color1i(6); vdb_point2(r3*cosf(a3), r3*sinf(a3));
 
         vdb_color1i(2);
         vdb_line2(r1*cosf(a1), r1*sinf(a1), r2*cosf(a2), r2*sinf(a2));
@@ -74,6 +71,10 @@ void draw_cool_spinny_thing(float dt)
         vdb_line2(r1*cosf(a1), r1*sinf(a1), r3*cosf(a3), r3*sinf(a3));
         vdb_color1i(6);
         vdb_line2(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
+
+        vdb_color1i(2); vdb_circle(r1*cosf(a1), r1*sinf(a1), 1.0f+t1*4.0f-t2*4.0f);
+        vdb_color1i(8); vdb_circle(r2*cosf(a2), r2*sinf(a2), 1.0f+t1*4.0f-t2*4.0f);
+        vdb_color1i(6); vdb_circle(r3*cosf(a3), r3*sinf(a3), 1.0f+t1*4.0f-t2*4.0f);
     }
 
     #endif
