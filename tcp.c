@@ -48,6 +48,55 @@ static int tcp_has_listen_socket = 0;
 
 int tcp_listen(int listen_port)
 {
+    #if 1
+    #ifdef TCP_WINDOWS
+    DWORD yes = 1;
+    #else
+    int yes = 1;
+    #endif
+    struct sockaddr_in addr = {0};
+    tcp_has_listen_socket = 0;
+
+    #ifdef TCP_WINDOWS
+    struct WSAData wsa;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
+        return 0;
+    #endif
+
+    tcp_listen_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_listen_socket == TCP_INVALID_SOCKET)
+    {
+        printf("fuck\n");
+        tcp_cleanup();
+        return 0;
+    }
+
+    if (setsockopt(tcp_listen_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)) == TCP_SOCKET_ERROR)
+    {
+        tcp_close(tcp_listen_socket);
+        tcp_cleanup();
+        return 0;
+    }
+
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons((unsigned short)listen_port);
+    if (bind(tcp_listen_socket, (struct sockaddr*)&addr, sizeof(addr)) == TCP_SOCKET_ERROR)
+    {
+        tcp_close(tcp_listen_socket);
+        tcp_cleanup();
+        return 0;
+    }
+
+    if (listen(tcp_listen_socket, 1) == TCP_SOCKET_ERROR)
+    {
+        tcp_close(tcp_listen_socket);
+        tcp_cleanup();
+        return 0;
+    }
+    tcp_has_listen_socket = 1;
+    return tcp_has_listen_socket;
+    #else
     struct addrinfo *a = 0;
     struct addrinfo *info = 0;
     struct addrinfo hints = {0};
@@ -114,6 +163,7 @@ int tcp_listen(int listen_port)
     }
     freeaddrinfo(info);
     return tcp_has_listen_socket;
+    #endif
 }
 
 int tcp_accept()
