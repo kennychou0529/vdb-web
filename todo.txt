@@ -4,6 +4,9 @@ demo:
     live fisheye calibration
     v4l2/ffmpeg camera input
 
+o local sdl tool
+    Input port in argv or on first screen (textbox)
+
 o server: Use INADDR_ANY.
     http://stackoverflow.com/questions/4046616/sockets-how-to-find-out-what-port-and-address-im-assigned
     http://stackoverflow.com/questions/212528/get-the-ip-address-of-the-machine

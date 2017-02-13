@@ -124,7 +124,7 @@ int vdb_generate_handshake(const char *request, int request_len, char **out_resp
 
 int vdb_self_test()
 {
-    size_t request_len;
+    int request_len;
     char accept_key[1024];
     const char *request =
         "GET /chat HTTP/1.1\r\n"
@@ -135,7 +135,7 @@ int vdb_self_test()
         "Sec-WebSocket-Protocol: chat, superchat\r\n"
         "Sec-WebSocket-Version: 13\r\n"
         "Origin: http://example.com\r\n\r\n";
-    request_len = strlen(request);
+    request_len = (int)strlen(request);
     vdb_generate_accept_key(request, request_len, accept_key);
     vdb_assert(strcmp(accept_key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=") == 0);
     return 1;

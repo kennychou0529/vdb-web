@@ -33,18 +33,16 @@ int tcp_sendall(const void *data, int size);
 
 #ifdef TCP_WINDOWS
 #define tcp_cleanup() WSACleanup()
+#define tcp_close(s) closesocket(s)
+#define tcp_socket_t SOCKET
 #else
 #define tcp_cleanup()
-#endif
-
-#ifdef TCP_WINDOWS
-#define tcp_close(s) closesocket(s)
-#else
 #define tcp_close(s) close(s)
+#define tcp_socket_t int
 #endif
 
-static int tcp_client_socket = 0;
-static int tcp_listen_socket = 0;
+static tcp_socket_t tcp_client_socket = 0;
+static tcp_socket_t tcp_listen_socket = 0;
 static int tcp_has_client_socket = 0;
 static int tcp_has_listen_socket = 0;
 
@@ -99,7 +97,7 @@ int tcp_listen(int listen_port)
             continue;
         }
 
-        if (bind(tcp_listen_socket, a->ai_addr, a->ai_addrlen) == TCP_SOCKET_ERROR)
+        if (bind(tcp_listen_socket, a->ai_addr, (int)a->ai_addrlen) == TCP_SOCKET_ERROR)
         {
             tcp_close(tcp_listen_socket);
             tcp_cleanup();
