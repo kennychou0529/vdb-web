@@ -4,20 +4,28 @@ var ctx = 0;
 var cmd_data = 0;
 var has_connection = false;
 var fps = 60;
+var palette_index = 0;
 
 function palette(color)
 {
-         if (color == 0) return "#990343";
-    else if (color == 1) return "#D33F4D";
-    else if (color == 2) return "#F56D47";
-    else if (color == 3) return "#FDAE5F";
-    else if (color == 4) return "#FFDE8D";
-    else if (color == 5) return "#FFFFBE";
-    else if (color == 6) return "#FEDF8C";
-    else if (color == 7) return "#E3F69C";
-    else if (color == 8) return "#65C39F";
-    else if (color == 9) return "#3486BE";
-    else                 return "#5E509F";
+    var i = palette_index;
+    var palettes = [
+        // Spectral
+        ["#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#FEE08B", "#FFFFBF", "#E6F598", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2"],
+
+        // BrownBlueGreen
+        ["#003C30", "#01665E", "#35978F", "#80CDC1", "#C7EAE5", "#F5F5F5", "#F6E8C3", "#DFC27D", "#BF812D", "#8C510A", "#543005"],
+
+        // Blue
+        ["#08306B", "#08519C", "#2171B5", "#4292C6", "#6BAED6", "#9ECAE1", "#C6DBEF", "#DEEBF7", "#F7FBFF"],
+
+        // GreenBlue
+        ["#084081", "#0868AC", "#2B8CBE", "#4EB3D3", "#7BCCC4", "#A8DDB5", "#CCEBC5", "#E0F3DB", "#F7FCF0"],
+
+        // Set 1
+        ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF"]
+    ];
+    return palettes[i][color % (palettes[i].length)];
 }
 
 function render()
@@ -27,6 +35,9 @@ function render()
     if (has_connection && cmd_data != 0)
     {
         status.innerHTML = "Connected!";
+
+        var select_color = document.getElementById("color_palette");
+        palette_index = parseInt(select_color.options[select_color.selectedIndex].value);
 
         // @ Maybe TypedArray has better perf for many points?
         // @ Negotiate endianness with server
