@@ -4,6 +4,10 @@ demo:
     live fisheye calibration
     v4l2/ffmpeg camera input
 
+o server: Use INADDR_ANY.
+    http://stackoverflow.com/questions/4046616/sockets-how-to-find-out-what-port-and-address-im-assigned
+    http://stackoverflow.com/questions/212528/get-the-ip-address-of-the-machine
+
 o browser/server: log data
 
 o browser: camera
@@ -105,12 +109,6 @@ o server: WebGL + offscreen canvas for text
     http://twgljs.org/
 
 o server: Batching and draw commands
-
-o server: List all addresses that it is available on
-    Punch ports through internet???
-    upnp, port mapping
-    https://github.com/kzahel/web-server-chrome
-    See https://webglfundamentals.org/webgl/lessons/webgl-setup-and-installation.html
 
 o server: msg queue, poll.
 

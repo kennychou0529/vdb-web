@@ -1,3 +1,13 @@
+#define vdb_assert(EXPR)  { if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; } }
+#ifdef VDB_LOG_DEBUG
+#define vdb_log(...)      { printf("[vdb] %s@L%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); }
+#else
+#define vdb_log(...)      { }
+#endif
+#define vdb_log_once(...) { static int first = 1; if (first) { printf("[vdb] "); printf(__VA_ARGS__); first = 0; } }
+#define vdb_err_once(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %s:\n[vdb] ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
+#define vdb_critical(EXPR) if (!(EXPR)) { printf("[vdb] Something went wrong at line %d in file %s\n", __LINE__, __FILE__); vdb_shared->critical_error = 1; return 0; }
+
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
 #define _CRT_SECURE_NO_WARNINGS // @ Replace sprintf
@@ -12,17 +22,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #endif
-
-#define vdb_assert(EXPR)  { if (!(EXPR)) { printf("[error]\n\tAssert failed at line %d in file %s:\n\t'%s'\n", __LINE__, __FILE__, #EXPR); return 0; } }
-#ifdef VDB_LOG_DEBUG
-#define vdb_log(...)      { printf("[vdb] %s@L%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); }
-#else
-#define vdb_log(...)      { }
-#endif
-#define vdb_log_once(...) { static int first = 1; if (first) { printf("[vdb] "); printf(__VA_ARGS__); first = 0; } }
-#define vdb_err_once(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %s:\n[vdb] ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
-#define vdb_critical(EXPR) if (!(EXPR)) { printf("[vdb] Something went wrong at line %d in file %s\n", __LINE__, __FILE__); vdb_shared->critical_error = 1; return 0; }
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -304,8 +303,6 @@ int vdb_recv_thread()
     return 0;
 }
 
-static uint32_t *vdb_draw_count = 0;
-
 void *vdb_push_bytes(const void *data, int count)
 {
     if (vdb_shared->work_buffer_used + count <= VDB_WORK_BUFFER_SIZE)
@@ -316,6 +313,39 @@ void *vdb_push_bytes(const void *data, int count)
         else     memset(dst, 0, count);
         vdb_shared->work_buffer_used += count;
         return (void*)dst;
+    }
+    return 0;
+}
+
+int vdb_push_u08(uint8_t x)
+{
+    if (vdb_shared->work_buffer_used + sizeof(uint8_t) <= VDB_WORK_BUFFER_SIZE)
+    {
+        *(uint8_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
+        vdb_shared->work_buffer_used += sizeof(uint8_t);
+        return 1;
+    }
+    return 0;
+}
+
+int vdb_push_u32(uint32_t x)
+{
+    if (vdb_shared->work_buffer_used + sizeof(uint32_t) <= VDB_WORK_BUFFER_SIZE)
+    {
+        *(uint32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
+        vdb_shared->work_buffer_used += sizeof(uint32_t);
+        return 1;
+    }
+    return 0;
+}
+
+int vdb_push_r32(float x)
+{
+    if (vdb_shared->work_buffer_used + sizeof(float) <= VDB_WORK_BUFFER_SIZE)
+    {
+        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
+        vdb_shared->work_buffer_used += sizeof(float);
+        return 1;
     }
     return 0;
 }
@@ -376,8 +406,6 @@ int vdb_begin()
         return 0;
     }
     vdb_shared->work_buffer_used = 0;
-    vdb_draw_count = (uint32_t*)vdb_push_bytes(0, sizeof(uint32_t));
-    *vdb_draw_count = 0;
     return 1;
 }
 
@@ -395,41 +423,6 @@ void vdb_end()
         // Notify sending thread that data is available
         vdb_signal_data_ready();
     }
-}
-
-// Pushbuffer API implementation
-
-int vdb_push_u08(uint8_t x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(uint8_t) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(uint8_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(uint8_t);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_push_u32(uint32_t x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(uint32_t) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(uint32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(uint32_t);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_push_r32(float x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(float) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(float);
-        return 1;
-    }
-    return 0;
 }
 
 // Public API implementation
@@ -462,7 +455,6 @@ void vdb_point2(float x, float y)
     vdb_push_u08(vdb_current_color);
     vdb_push_r32(x);
     vdb_push_r32(y);
-    (*vdb_draw_count)++;
 }
 
 void vdb_point3(float x, float y, float z)
@@ -472,7 +464,6 @@ void vdb_point3(float x, float y, float z)
     vdb_push_r32(x);
     vdb_push_r32(y);
     vdb_push_r32(z);
-    (*vdb_draw_count)++;
 }
 
 void vdb_line2(float x1, float y1, float x2, float y2)
@@ -483,7 +474,6 @@ void vdb_line2(float x1, float y1, float x2, float y2)
     vdb_push_r32(y1);
     vdb_push_r32(x2);
     vdb_push_r32(y2);
-    (*vdb_draw_count)++;
 }
 
 void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
@@ -496,7 +486,6 @@ void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
     vdb_push_r32(x2);
     vdb_push_r32(y2);
     vdb_push_r32(z2);
-    (*vdb_draw_count)++;
 }
 
 void vdb_rect(float x, float y, float w, float h)
@@ -507,5 +496,4 @@ void vdb_rect(float x, float y, float w, float h)
     vdb_push_r32(y);
     vdb_push_r32(w);
     vdb_push_r32(h);
-    (*vdb_draw_count)++;
 }

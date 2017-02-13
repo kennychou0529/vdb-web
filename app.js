@@ -43,14 +43,12 @@ function render()
         // @ Negotiate endianness with server
         var little_endian = true;
         var view = new DataView(cmd_data);
-
         var offset = 0;
-        var count = view.getUint32(offset, little_endian); offset += 4;
 
         ctx.fillStyle="#2a2a2a";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fill();
-        for (var i = 0; i < count; i++)
+        while (offset < view.byteLength)
         {
             var a = cvs.height/cvs.width;
             var mode = view.getUint8(offset, little_endian); offset += 1;
@@ -135,6 +133,8 @@ function render()
                 ctx.fill();
             }
         }
+
+        console.log("Offset: " + offset + " len: " + view.byteLength);
     }
     else
     {
