@@ -29,7 +29,7 @@
 #include "websocket.c"
 
 #ifndef VDB_WORK_BUFFER_SIZE
-#define VDB_WORK_BUFFER_SIZE (1024*1024)
+#define VDB_WORK_BUFFER_SIZE (32*1024*1024)
 #endif
 
 #ifndef VDB_RECV_BUFFER_SIZE

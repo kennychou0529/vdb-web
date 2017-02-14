@@ -5,6 +5,7 @@ demo:
     v4l2/ffmpeg camera input
 
 o local sdl tool
+    Compile to js with emsdk?
     Input port in argv or on first screen (textbox)
 
 o server: Use INADDR_ANY.
