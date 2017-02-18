@@ -4,6 +4,8 @@ demo:
     live fisheye calibration
     v4l2/ffmpeg camera input
 
+o webgl: one color upload per quad
+
 o class ids:
     Instead of color | width, send a 256 bit class ID.
     User can assign styles to specific IDs.
