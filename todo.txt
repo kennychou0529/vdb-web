@@ -5,6 +5,9 @@ demo:
     v4l2/ffmpeg camera input
 
 o webgl: one color upload per quad
+o webgl: optimized point renderer
+    render quads
+    smoothstep antialias falloff alpha in shader
 
 o class ids:
     Instead of color | width, send a 256 bit class ID.
