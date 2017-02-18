@@ -3,14 +3,25 @@
     <title>WebGL test</title>
     <style>
     #canvas {
-        width: 640;
+        display: block;
+        margin: 0 auto;
+        width: 60%;
         height: 360;
         border: 1px solid #000;
+    }
+    #container {
+        border: 1px solid #000;
+        display: block;
+        margin: 0 auto;
+        max-width: 1000;
+        max-height: 700;
     }
     </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+    </div>
 
 <script id="2d-vertex-shader" type="notjs">
 attribute vec4 position;
