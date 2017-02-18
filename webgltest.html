@@ -5,9 +5,12 @@
     #canvas {
         display: block;
         margin: 0 auto;
+        margin-top: 6px;
+        margin-bottom: 6px;
         width: 60%;
         height: 360;
-        border: 1px solid #000;
+        /*border: 1px solid #000;*/
+        box-shadow: 0px 0px 8px #000;
     }
     #container {
         border: 1px solid #000;
@@ -23,19 +26,28 @@
         <canvas id="canvas"></canvas>
     </div>
 
-<script id="2d-vertex-shader" type="notjs">
-attribute vec4 position;
-void main() {
-    gl_Position = position;
+<script id="shader_vs" type="notjs">
+attribute vec4 coord;
+attribute vec4 color;
+attribute vec2 texel;
+varying vec4 v_color;
+varying vec2 v_texel;
+void main()
+{
+    v_color = color;
+    v_texel = texel;
+    gl_Position = coord;
 }
 </script>
 
-<script id="2d-fragment-shader" type="notjs">
+<script id="shader_fs" type="notjs">
 precision mediump float;
-uniform vec4 albedo;
-uniform float time;
-void main() {
-    gl_FragColor = albedo*(0.5+0.5*sin(time));
+varying vec4 v_color;
+varying vec2 v_texel;
+uniform sampler2D channel0;
+void main()
+{
+    gl_FragColor = v_color*texture2D(channel0, v_texel);
 }
 </script>
 
@@ -69,33 +81,95 @@ function createProgram(gl, vs, fs)
 var cvs = null;
 var gl = null;
 var program = null;
-var vbo = null;
-var a_position_loc = null;
-var u_albedo_loc = null;
+
+var loc_coord = null;
+var loc_color = null;
+var loc_texel = null;
+var loc_chan0 = null;
+
+var max_coords = 1024*1024;
+var buf_coord = null;
+var buf_texel = null;
+var buf_color = null;
+
+var vbo_coord = null;
+var vbo_color = null;
+var vbo_texel = null;
+
+var tex_chan0 = null;
 
 function init()
 {
     // compile shader
-    var shader_vs_src = document.getElementById("2d-vertex-shader").text;
-    var shader_fs_src = document.getElementById("2d-fragment-shader").text;
+    var shader_vs_src = document.getElementById("shader_vs").text;
+    var shader_fs_src = document.getElementById("shader_fs").text;
     var shader_vs = createShader(gl, gl.VERTEX_SHADER, shader_vs_src);
     var shader_fs = createShader(gl, gl.FRAGMENT_SHADER, shader_fs_src);
     program = createProgram(gl, shader_vs, shader_fs);
 
     // get attribute locations
-    a_position_loc = gl.getAttribLocation(program, "position");
-    u_albedo_loc = gl.getUniformLocation(program, "albedo");
-    u_time_loc = gl.getUniformLocation(program, "time");
+    loc_coord = gl.getAttribLocation(program, "coord");
+    loc_color = gl.getAttribLocation(program, "color");
+    loc_texel = gl.getAttribLocation(program, "texel");
+    loc_chan0 = gl.getUniformLocation(program, "chan0");
 
-    var data = [
-      -1, -1,
-      +1, -1,
-       0, +0.3
+    // buf_coord = new Float32Array(max_coords*2);
+    // buf_texel = new Float32Array(max_coords*2);
+    // buf_color = new Uint8Array(max_coords*4);
+
+    var coord = [
+        -1, -1,
+        +1, -1,
+        +1, +1,
+        +1, +1,
+        -1, +1,
+        -1, -1
     ];
-    vbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    vbo_coord = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_coord);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coord), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    var color = [
+        255, 255, 255, 255,
+        255, 255, 255, 255,
+        255, 255, 255, 255,
+        255, 255, 255, 255,
+        255, 255, 255, 255,
+        255, 255, 255, 255
+    ];
+    vbo_color = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_color);
+    gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(color), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    var texel = [
+        0, 0,
+        1, 0,
+        1, 1,
+        1, 1,
+        0, 1,
+        0, 0
+    ];
+    vbo_texel = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_texel);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texel), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    tex_chan0 = gl.createTexture();
+    chan0x = 2;
+    chan0y = 2;
+    gl.bindTexture(gl.TEXTURE_2D, tex_chan0);
+    var chan0data = new Uint8Array([
+       201,87,72,255,  83,164,170,255,
+       73,93,66,255,   232,172,140,255
+    ]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, chan0x, chan0y, 0, gl.RGBA, gl.UNSIGNED_BYTE, chan0data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
 function tick(t, dt)
@@ -114,13 +188,27 @@ function tick(t, dt)
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(program);
-    gl.enableVertexAttribArray(a_position_loc);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.vertexAttribPointer(a_position_loc, 2, gl.FLOAT, false, 0, 0);
-    gl.uniform4f(u_albedo_loc, 1.0, 0.3, 0.5, 1.0);
-    gl.uniform1f(u_time_loc, t);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.activeTexture(gl.TEXTURE0 + 0);
+    gl.bindTexture(gl.TEXTURE_2D, tex_chan0);
+
+    gl.enableVertexAttribArray(loc_coord);
+    gl.enableVertexAttribArray(loc_color);
+    gl.enableVertexAttribArray(loc_texel);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_coord);
+    gl.vertexAttribPointer(loc_coord, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_color);
+    gl.vertexAttribPointer(loc_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_texel);
+    gl.vertexAttribPointer(loc_texel, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(loc_chan0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
 var animation_frame_t_first = null;
