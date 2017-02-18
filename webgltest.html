@@ -1,0 +1,152 @@
+<html>
+<head>
+    <title>WebGL test</title>
+    <style>
+    #canvas {
+        width: 640;
+        height: 360;
+        border: 1px solid #000;
+    }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script id="2d-vertex-shader" type="notjs">
+attribute vec4 position;
+void main() {
+    gl_Position = position;
+}
+</script>
+
+<script id="2d-fragment-shader" type="notjs">
+precision mediump float;
+uniform vec4 albedo;
+uniform float time;
+void main() {
+    gl_FragColor = albedo*(0.5+0.5*sin(time));
+}
+</script>
+
+<script>
+
+function createShader(gl, type, source)
+{
+    var shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    if (success)
+        return shader;
+    console.log(gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+}
+
+function createProgram(gl, vs, fs)
+{
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+    if (success)
+        return program;
+    console.log(gl.getProgramInfoLog(program));
+    gl.deleteProgram(program);
+}
+
+var cvs = null;
+var gl = null;
+var program = null;
+var vbo = null;
+var a_position_loc = null;
+var u_albedo_loc = null;
+
+function init()
+{
+    // compile shader
+    var shader_vs_src = document.getElementById("2d-vertex-shader").text;
+    var shader_fs_src = document.getElementById("2d-fragment-shader").text;
+    var shader_vs = createShader(gl, gl.VERTEX_SHADER, shader_vs_src);
+    var shader_fs = createShader(gl, gl.FRAGMENT_SHADER, shader_fs_src);
+    program = createProgram(gl, shader_vs, shader_fs);
+
+    // get attribute locations
+    a_position_loc = gl.getAttribLocation(program, "position");
+    u_albedo_loc = gl.getUniformLocation(program, "albedo");
+    u_time_loc = gl.getUniformLocation(program, "time");
+
+    var data = [
+      -1, -1,
+      +1, -1,
+       0, +0.3
+    ];
+    vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+}
+
+function tick(t, dt)
+{
+    var css_width  = cvs.clientWidth;
+    var css_height = cvs.clientHeight;
+
+    if (cvs.width  != css_width ||
+        cvs.height != css_height)
+    {
+        cvs.width  = css_width;
+        cvs.height = css_height;
+    }
+
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(program);
+    gl.enableVertexAttribArray(a_position_loc);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.vertexAttribPointer(a_position_loc, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform4f(u_albedo_loc, 1.0, 0.3, 0.5, 1.0);
+    gl.uniform1f(u_time_loc, t);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+var animation_frame_t_first = null;
+var animation_frame_t_prev = null;
+
+function animation_frame(t)
+{
+    var delta = 1.0/60.0;
+    var elapsed = 0.0;
+    if (t)
+    {
+        if (!animation_frame_t_first) animation_frame_t_first = t;
+        if (!animation_frame_t_prev) animation_frame_t_prev = t;
+        delta = (t - animation_frame_t_prev)/1000.0;
+        elapsed = (t - animation_frame_t_first)/1000.0;
+        animation_frame_t_prev = t;
+    }
+    tick(elapsed, delta);
+    requestAnimationFrame(animation_frame);
+}
+
+function main()
+{
+    cvs = document.getElementById("canvas");
+    gl = cvs.getContext("webgl");
+    if (!gl)
+    {
+        console.log("Fuck");
+        return;
+    }
+
+    init();
+    animation_frame();
+}
+
+main();
+
+</script>
+</body>
+</html>

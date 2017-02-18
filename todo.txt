@@ -4,8 +4,12 @@ demo:
     live fisheye calibration
     v4l2/ffmpeg camera input
 
+o make it easy to instrument blocks of code that can be debugged
+    if vdb is enabled, and otherwise run normally. like fisheye
+    rectification, or point selection. don't want to duplicate code
+    or move into seperate function.
+
 o local sdl tool
-    Compile to js with emsdk?
     Input port in argv or on first screen (textbox)
 
 o server: Use INADDR_ANY.
