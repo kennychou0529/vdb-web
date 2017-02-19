@@ -7,6 +7,7 @@
 #define vdb_log_once(...) { static int first = 1; if (first) { printf("[vdb] "); printf(__VA_ARGS__); first = 0; } }
 #define vdb_err_once(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %s:\n[vdb] ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
 #define vdb_critical(EXPR) if (!(EXPR)) { printf("[vdb] Something went wrong at line %d in file %s\n", __LINE__, __FILE__); vdb_shared->critical_error = 1; return 0; }
+#define vdb_unused_param(P) (void)(P)
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
@@ -41,7 +42,7 @@
 #define VDB_USING_DEFAULT_LISTEN_PORT
 #endif
 
-struct vdb_shared_t
+typedef struct
 {
     #ifdef VDB_WINDOWS
     volatile HANDLE send_semaphore;
@@ -70,7 +71,7 @@ struct vdb_shared_t
 
     // @ message and event queue
     int msg_continue;
-};
+} vdb_shared_t;
 
 static vdb_shared_t *vdb_shared = 0;
 static int vdb_listen_port = VDB_LISTEN_PORT;
@@ -107,7 +108,7 @@ void vdb_sleep(int ms)      { usleep(ms*1000); }
 #endif
 
 #ifdef VDB_WINDOWS
-DWORD WINAPI vdb_send_thread(void *)
+DWORD WINAPI vdb_send_thread(void *vdata)
 #else
 int vdb_send_thread()
 #endif
@@ -143,19 +144,22 @@ int vdb_send_thread()
         vdb_critical(vdb_signal_data_sent());
     }
     vs->has_send_thread = 0;
+    #ifdef VDB_WINDOWS
+    vdb_unused_param(vdata);
+    #endif
     return 0;
 }
 
 #ifdef VDB_WINDOWS
-DWORD WINAPI vdb_recv_thread(void *)
+DWORD WINAPI vdb_recv_thread(void *vdata)
 #else
 int vdb_recv_thread()
 #endif
 {
     vdb_shared_t *vs = vdb_shared;
-    vdb_log("Created read thread\n");
     int read_bytes;
     vdb_msg_t msg;
+    vdb_log("Created read thread\n");
     while (!vs->critical_error)
     {
         if (vs->critical_error)
@@ -206,8 +210,6 @@ int vdb_recv_thread()
             vdb_log("Generating handshake\n");
             if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
             {
-                vdb_log("Failed to generate handshake\n");
-
                 // If we failed to generate a handshake, it means that either
                 // we did something wrong, or the browser did something wrong,
                 // or the request was an ordinary HTTP request. If the latter
@@ -223,6 +225,7 @@ int vdb_recv_thread()
                     content
                     );
 
+                vdb_log("Failed to generate handshake. Sending HTML page.\n");
                 if (!tcp_sendall(data, len))
                 {
                     vdb_log("Lost connection while sending HTML page\n");
@@ -307,6 +310,9 @@ int vdb_recv_thread()
             vs->msg_continue = 1;
         }
     }
+    #ifdef VDB_WINDOWS
+    vdb_unused_param(vdata);
+    #endif
     return 0;
 }
 
