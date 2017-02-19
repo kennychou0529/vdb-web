@@ -1,13 +1,13 @@
 // websocket.c - Version 1 - Websocket utilities
 
 // interface
-struct vdb_msg_t
+typedef struct
 {
     char *payload;
     int length;
     int fin;
     int opcode;
-};
+} vdb_msg_t;
 int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length);
 int vdb_self_test();
 void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
@@ -147,10 +147,11 @@ void vdb_print_bytes(void *recv_buffer, int n)
     for (index = 0; index < n; index++)
     {
         unsigned char c = ((unsigned char*)recv_buffer)[index];
+        int i;
         printf("%d:\t", index);
-        for (int i = 7; i >= 4; i--) printf("%d", (c >> i) & 1);
+        for (i = 7; i >= 4; i--) printf("%d", (c >> i) & 1);
         printf(" ");
-        for (int i = 3; i >= 0; i--) printf("%d", (c >> i) & 1);
+        for (i = 3; i >= 0; i--) printf("%d", (c >> i) & 1);
         printf("\n");
     }
 }
@@ -200,15 +201,25 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
     // they are needed. For example, extended len
     // is not sent if the len fits inside payload
     // len.
-    int i = 0;
+    uint32_t opcode;
+    uint32_t fin;
+    uint64_t len;
+    uint32_t mask;
     unsigned char key[4] = {0};
     unsigned char *frame = (unsigned char*)recv_buffer;
+    int i = 0;
+
+    // extract header
     vdb_assert(i + 2 <= received);
-    uint32_t opcode = ((frame[i  ] >> 0) & 0xF);
-    uint32_t fin    = ((frame[i++] >> 7) & 0x1);
-    uint64_t len    = ((frame[i  ] >> 0) & 0x7F);
-    uint32_t mask   = ((frame[i++] >> 7) & 0x1);
-    vdb_assert(mask == 1); // client messages must be masked
+    opcode = ((frame[i  ] >> 0) & 0xF);
+    fin    = ((frame[i++] >> 7) & 0x1);
+    len    = ((frame[i  ] >> 0) & 0x7F);
+    mask   = ((frame[i++] >> 7) & 0x1);
+
+    // client messages must be masked according to spec
+    vdb_assert(mask == 1);
+
+    // extract payload length in number of bytes
     if (len == 126)
     {
         vdb_assert(i + 2 <= received);
@@ -230,12 +241,17 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
         len |= frame[i++];
     }
 
-    vdb_assert(len <= (uint64_t)received); // len must fit inside an int
-    vdb_assert(i + 4 <= received);
-    key[0] = frame[i++];
-    key[1] = frame[i++];
-    key[2] = frame[i++];
-    key[3] = frame[i++];
+    // verify that we read the length correctly
+    vdb_assert(len <= (uint64_t)received);
+
+    // extract key used to decode payload
+    {
+        vdb_assert(i + 4 <= received);
+        key[0] = frame[i++];
+        key[1] = frame[i++];
+        key[2] = frame[i++];
+        key[3] = frame[i++];
+    }
 
     // decode payload
     {
@@ -250,18 +266,5 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
     msg->length = (int)len;
     msg->opcode = (int)opcode;
     msg->fin = (int)fin;
-
-    // print payload
-    #if 0
-    {
-        printf("[vdb] received %d bytes, first ten are:\n", received);
-        vdb_print_bytes(frame, 10);
-        printf("fin :\t%u\n", fin);
-        printf("code:\t%u\n", opcode);
-        printf("mask:\t%u\n", mask);
-        printf("len :\t%d bytes\n", *out_length);
-        printf("data:\t'%s'\n", *out_payload);
-    }
-    #endif
     return 1;
 }
