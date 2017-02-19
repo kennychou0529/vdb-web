@@ -85,27 +85,17 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    // int uploaded = 0;
-    // while (!uploaded)
-    // {
-    //     if (vdb_begin())
-    //     {
-    //         vdb_image_rgb8(image, width, height);
-    //         vdb_end();
-    //         uploaded = 1;
-    //     }
-    //     vdb_sleep(1000);
-    // }
-
-    int running = 1;
-    while (running)
+    while (vdb_loop(20))
     {
-        if (vdb_begin())
-        {
-            vdb_image_rgb8(image, width, height);
-            draw_cool_spinny_thing(1.0f/60.0f);
-            vdb_end();
-        }
-        vdb_sleep(1000/60);
+        static float t = 0.0f;
+        t += 1.0f/20.0f;
+        vdb_image_rgb8(image, width, height);
+        vdb_color1i(2); vdb_circle(sinf(t), 0.0f, 16.0f);
     }
+
+    while (vdb_loop(60))
+    {
+        draw_cool_spinny_thing(1.0f/60.0f);
+    }
+    return 0;
 }

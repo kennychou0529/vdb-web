@@ -54,7 +54,7 @@ function pixelHToUser(y) { return 2.0*y/cvs.height; }
 
 function generateTriangles(commands)
 {
-    // tex_view0_active = false;
+    tex_view0_active = false;
 
     var coords = [];
     var colors = [];
@@ -430,4 +430,9 @@ function load()
     connect();
     init();
     anim();
+}
+
+function sendContinue()
+{
+    ws.send("c");
 }

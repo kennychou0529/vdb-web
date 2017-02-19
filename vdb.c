@@ -67,6 +67,9 @@ struct vdb_shared_t
     char swapbuffer2[VDB_WORK_BUFFER_SIZE];
     char *work_buffer;
     char *send_buffer;
+
+    // @ message and event queue
+    int msg_continue;
 };
 
 static vdb_shared_t *vdb_shared = 0;
@@ -299,6 +302,10 @@ int vdb_recv_thread()
             continue;
         }
         vdb_log("Got a final message (%d): '%s'\n", msg.length, msg.payload);
+        if (msg.length == 1 && msg.payload[0] == 'c')
+        {
+            vs->msg_continue = 1;
+        }
     }
     return 0;
 }
@@ -423,6 +430,33 @@ void vdb_end()
         // Notify sending thread that data is available
         vdb_signal_data_ready();
     }
+}
+
+int vdb_loop(int fps)
+{
+    static int entry = 1;
+    if (entry)
+    {
+        while (!vdb_begin())
+        {
+        }
+        entry = 0;
+    }
+    else
+    {
+        vdb_end();
+        vdb_sleep(1000/fps);
+        if (vdb_shared->msg_continue)
+        {
+            vdb_shared->msg_continue = 0;
+            entry = 1;
+            return 0;
+        }
+        while (!vdb_begin())
+        {
+        }
+    }
+    return 1;
 }
 
 // Public API implementation
