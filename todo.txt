@@ -12,7 +12,6 @@ o vdb_xrange
 o vdb_xview
 o vdb_aspect
 o vdb_setImage(slot, x, y, RGB, U08)
-o vdb_image(slot) -> sets background image?
 o Make default behaviour to choose an arbitrary port (#define USE_FIXED_PORT 8000 otherwise)
 o vdb_mouse.x/y and vdb_select
     Browser sends mouse coordinates (NDC)
@@ -24,6 +23,7 @@ o vdb_mouse.x/y and vdb_select
         and expose them otherwise?...
 
 web:
+o interaction: https://hpbn.co/websocket/#sending-text-and-binary-data
 o http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl/
 o https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
 o Focusable 3D camera
