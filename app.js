@@ -1,5 +1,4 @@
 var ws = null;
-var cmd_data = null;
 var num_elements = 0;
 var has_connection = false;
 
@@ -59,7 +58,7 @@ function generateTriangles(commands)
 
     var coords = [];
     var colors = [];
-    var num_elements = 0;
+    var count = 0;
 
     var little_endian = true;
     var view = new DataView(commands);
@@ -88,7 +87,7 @@ function generateTriangles(commands)
             //             color_r,color_g,color_b,color_a,
             //             color_r,color_g,color_b,color_a,
             //             color_r,color_g,color_b,color_a);
-            // num_elements += 6;
+            // count += 6;
         }
         else if (mode == 2) // point3
         {
@@ -124,7 +123,7 @@ function generateTriangles(commands)
                         color_r,color_g,color_b,color_a,
                         color_r,color_g,color_b,color_a,
                         color_r,color_g,color_b,color_a);
-            num_elements += 6;
+            count += 6;
         }
         else if (mode == 4) // line3
         {
@@ -164,7 +163,7 @@ function generateTriangles(commands)
                 colors.push(color_r,color_g,color_b, color_a,
                             color_r,color_g,color_b, color_a,
                             color_r,color_g,color_b, color_a);
-                num_elements += 3;
+                count += 3;
             }
         }
         else if (mode == 7) // image_rgb8
@@ -176,8 +175,8 @@ function generateTriangles(commands)
             var data = new Uint8Array(commands, offset, size);
             offset += size;
 
-            // if (tex_view0_width != width || tex_view0_height != height)
-            if (1) // @ texture upload optimization
+            if (tex_view0_width != width || tex_view0_height != height)
+            // if (1) // @ texture upload optimization
             {
                 tex_view0_width = width;
                 tex_view0_height = height;
@@ -195,6 +194,7 @@ function generateTriangles(commands)
                 gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGB, gl.UNSIGNED_BYTE, data);
             }
             tex_view0_active = true;
+            data = null;
         }
     }
 
@@ -204,7 +204,11 @@ function generateTriangles(commands)
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.STATIC_DRAW);
 
-    return num_elements;
+    coords = null;
+    colors = null;
+    view = null;
+
+    return count;
 }
 
 function createShader(gl, type, source)
@@ -284,7 +288,7 @@ function init()
     tex_view0_active = false;
 }
 
-function draw(commands)
+function draw()
 {
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
@@ -339,6 +343,8 @@ function draw(commands)
     }
 }
 
+var fuck = 0;
+
 function connect()
 {
     setInterval(function()
@@ -366,8 +372,7 @@ function connect()
             ws.onmessage = function(e)
             {
                 num_elements = generateTriangles(e.data);
-                cmd_data = e.data;
-                // @ TODO: Parse and unpack data, convert to correct endian, etc
+                e.data = null;
             }
         }
     }, 1000);
@@ -389,10 +394,10 @@ function anim(t)
     }
 
     var status = document.getElementById("status");
-    if (has_connection && cmd_data != null)
+    if (has_connection)
     {
         status.innerHTML = "Connected";
-        draw(cmd_data);
+        draw();
     }
     else
     {

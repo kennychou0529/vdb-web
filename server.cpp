@@ -74,8 +74,8 @@ void draw_cool_spinny_thing(float dt)
 
 int main()
 {
-    const int width = 600;
-    const int height = 300;
+    const int width = 256;
+    const int height = 256;
     unsigned char image[width*height*3];
     for (int y = 0; y < height; y++)
     for (int x = 0; x < width; x++)
@@ -85,24 +85,24 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    int uploaded = 0;
-    while (!uploaded)
-    {
-        if (vdb_begin())
-        {
-            vdb_image_rgb8(image, width, height);
-            vdb_end();
-            uploaded = 1;
-        }
-        vdb_sleep(1000);
-    }
+    // int uploaded = 0;
+    // while (!uploaded)
+    // {
+    //     if (vdb_begin())
+    //     {
+    //         vdb_image_rgb8(image, width, height);
+    //         vdb_end();
+    //         uploaded = 1;
+    //     }
+    //     vdb_sleep(1000);
+    // }
 
     int running = 1;
     while (running)
     {
         if (vdb_begin())
         {
-            // vdb_image_rgb8(image, width, height);
+            vdb_image_rgb8(image, width, height);
             draw_cool_spinny_thing(1.0f/60.0f);
             vdb_end();
         }
