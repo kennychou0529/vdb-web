@@ -1,47 +1,43 @@
 demo:
-    all stages of the hough transform
-    show interactive mode and stream mode
-    live fisheye calibration
-    v4l2/ffmpeg camera input
+o all stages of the hough transform
+o show interactive mode and stream mode
+o live fisheye calibration
+o v4l2/ffmpeg camera input
 
-o webgl: one color upload per quad
-o webgl: optimized point renderer
-    render quads
-    smoothstep antialias falloff alpha in shader
+vdb:
+o vdb_xrange
+o vdb_xview
+o vdb_aspect
+o vdb_setImage(slot, x, y, RGB, U08)
+o vdb_image(slot) -> sets background image?
+o Make default behaviour to choose an arbitrary port (#define USE_FIXED_PORT 8000 otherwise)
 
-o class ids:
+web:
+o http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl/
+o https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+o Focusable 3D camera
+o server: offscreen canvas for text
+    http://murfy.de/read/webgl-text-rendering
+    https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+    https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html
+
+web:
+o Class specific styles
     Instead of color | width, send a 256 bit class ID.
     User can assign styles to specific IDs.
-
     Example: Same width, color ramps from 0 to 256, no highlight
         id width color highlight
         0  1     0     0
         1  1     1     0
         2  1     2     0
-        ┇
-
     Can have different styles for lines and points.
 
-o webgl: hidpi
-    https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
 
-o make it easy to instrument blocks of code that can be debugged
-    if vdb is enabled, and otherwise run normally. like fisheye
-    rectification, or point selection. don't want to duplicate code
-    or move into seperate function.
-
-o local sdl tool
-    Input port in argv or on first screen (textbox)
-
-o server: Use INADDR_ANY.
-    http://stackoverflow.com/questions/4046616/sockets-how-to-find-out-what-port-and-address-im-assigned
-    http://stackoverflow.com/questions/212528/get-the-ip-address-of-the-machine
-
-o browser/server: log data
-
-o browser: camera
-    click on element to orbit around it
-
+Ideas
+o Make it easy to instrument blocks of code
+    Like fisheye rectification routine; want to be able to disable VDB and have it run normally
+    Don't want to duplicate code or move into seperate function
+o Log raw data in application? I.e. IMU data, ...?
 o server: mapping, hovering, labels and pausing
     - Problem: In stream-mode, the server cannot necessarily
     reproduce the visualization, because the data might be updated.
@@ -128,51 +124,20 @@ o misc: Labels
         }
     Cursor position is received from browser per frame?
 
-o server: WebGL + offscreen canvas for text
-    + Can send color and size per line and point efficiently!
-    + Don't need to implement line clipping!
-    http://murfy.de/read/webgl-text-rendering
-    https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
-    https://webglfundamentals.org/
-    https://webglfundamentals.org/webgl/lessons/webgl-anti-patterns.html
-    http://twgljs.org/
-
-o server: Batching and draw commands
-
-o server: msg queue, poll.
-
 o server: send list of possible views and let browser filter
 o server: hton and ntoh
 o server: Receive large messages (accumulate, until FIN)
 
-o server: vdb_text
-o server: vdb_lines, vdb_points modes
-o server: vdb_color (non-indexed)
-o server/browser: interactive
-    - keypresses, keyholds, keyups
-
 o browser: user-defined interface sidebar
 o browser: SVG icons (https://material.io/icons/#ic_mode_comment)
 
-o brower: Dynamic quality balance with performance
-    - Toggle nice points or square points
-    - Line subdivision quality (avoid subdivision for pinhole projection!)
-
-o browser: idle anim
-    https://projects.lukehaas.me/css-loaders/
-    http://imgur.com/gallery/s7N6N
-
-o browser: dynamic viewport and canvas size
+o browser: https://projects.lukehaas.me/css-loaders/
 
 o server:
     send_thread should be able to check if the work-buffer is ready to be sent
     (cause it might not have been signalled to be sent because send_thread was
     busy, and it might take a long time before it can be signalled again).
 
-o server: Static textures
-    Not updated every loop iteration
-
-o brower: Logging console
 o browser: Hide or show axes
 o browser: Set canvas width height programmatically?
 o browser: Pausing to inspect in stream mode
@@ -181,7 +146,6 @@ o browser: Equidistant projection
 o browser: Pinhole projection with Brown-Conrady distortion
 o browser: Dynamic line rendering (binary search, curvature)
 
-o server: Request look-up in Hough table?
 o server: namespaces
     namespace socket
     {
