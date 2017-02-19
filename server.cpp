@@ -72,9 +72,9 @@ void draw_cool_spinny_thing(float dt)
         vdb_color1i(6);
         vdb_line2(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
 
-        vdb_color1i(2); vdb_circle(r1*cosf(a1), r1*sinf(a1), 1.0f+t1*4.0f-t2*4.0f);
-        vdb_color1i(8); vdb_circle(r2*cosf(a2), r2*sinf(a2), 1.0f+t1*4.0f-t2*4.0f);
-        vdb_color1i(6); vdb_circle(r3*cosf(a3), r3*sinf(a3), 1.0f+t1*4.0f-t2*4.0f);
+        vdb_color1i(2); vdb_circle(r1*cosf(a1), r1*sinf(a1), 2.0f+t1*8.0f-t2*8.0f);
+        vdb_color1i(8); vdb_circle(r2*cosf(a2), r2*sinf(a2), 2.0f+t1*8.0f-t2*8.0f);
+        vdb_color1i(6); vdb_circle(r3*cosf(a3), r3*sinf(a3), 2.0f+t1*8.0f-t2*8.0f);
     }
 
     #endif

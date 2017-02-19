@@ -3,37 +3,50 @@
     <title>vdebug</title>
     <link rel="stylesheet" href="app_bright.css">
     <script src="app.js"></script>
+    <script id="shader_vs" type="notjs">
+        attribute vec4 coord;
+        attribute vec4 color;
+        attribute vec2 texel;
+        varying vec4 v_color;
+        varying vec2 v_texel;
+        void main()
+        {
+            v_color = color;
+            v_texel = texel;
+            gl_Position = coord;
+        }
+    </script>
+    <script id="shader_fs" type="notjs">
+        precision mediump float;
+        varying vec4 v_color;
+        varying vec2 v_texel;
+        uniform sampler2D channel0;
+        void main()
+        {
+            gl_FragColor = v_color*texture2D(channel0, v_texel);
+        }
+    </script>
 </head>
-<body onload="app_onload()">
+<body onload="load()">
     <div id="container">
         <p id="status"></p>
-        <canvas width="640" height="480" id="canvas"></canvas>
+        <p id="fps"></p>
+        <canvas id="canvas"></canvas>
 
-        <br>
-
-        <label for="camera_projection">Camera</label>
-        <select name="camera_projection">
-          <option value="audi">2D</option>
-          <option value="volvo">3D (standard)</option>
-          <option value="saab">3D (equidistant)</option>
-          <option value="mercedes">3D (orthographic)</option>
-        </select>
-
-        <label for="select_viewport">Viewport</label>
+        <!-- <label for="select_viewport">Viewport</label>
         <select onchange="onchange_select_viewport()" id="select_viewport" name="select_viewport">
           <option value="letterbox">Letterbox</option>
           <option value="stretch">Stretch to fit</option>
-        </select>
+        </select> -->
 
-        <label for="color_palette">Colors</label>
+        <!-- <label for="color_palette">Colors</label>
         <select id="color_palette" name="color_palette">
           <option value="0">Spectral</option>
           <option value="1">BrownBlueGreen</option>
           <option value="2">Blue</option>
           <option value="3">GreenBlue</option>
           <option value="4">Set 1</option>
-        </select>
-        <!-- <a class="button" style="float:right;" href="javascript:ws_shutdown_server()">Shutdown</a> -->
+        </select> -->
     </div>
 </body>
 </html>

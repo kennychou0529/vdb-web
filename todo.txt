@@ -1,3 +1,6 @@
+// var select_color = document.getElementById("color_palette");
+// palette_index = parseInt(select_color.options[select_color.selectedIndex].value);
+
 demo:
 o all stages of the hough transform
 o show interactive mode and stream mode
@@ -11,6 +14,14 @@ o vdb_aspect
 o vdb_setImage(slot, x, y, RGB, U08)
 o vdb_image(slot) -> sets background image?
 o Make default behaviour to choose an arbitrary port (#define USE_FIXED_PORT 8000 otherwise)
+o vdb_mouse.x/y and vdb_select
+    Browser sends mouse coordinates (NDC)
+    vdb_select(x, y) compares (x,y) in NDC with mouse
+    If the element is the closest, the block is executed
+    -> Conditional drawcalls!
+    Obs! Does not work in paused stream mode; only in feedback mode
+        -> To enforce this, maybe let vdb_loop give out mouse coordinates
+        and expose them otherwise?...
 
 web:
 o http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl/

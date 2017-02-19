@@ -1,201 +1,334 @@
 var ws = null;
-var cvs = 0;
-var ctx = 0;
-var cmd_data = 0;
+var cmd_data = null;
 var has_connection = false;
-var fps = 60;
+
+var cvs = null;
+var gl = null;
+
+var program = null;
+var loc_coord = null;
+var loc_color = null;
+var loc_texel = null;
+var loc_chan0 = null;
+
+var vbo_user_coord = null;
+var vbo_user_color = null;
+var vbo_user_texel = null;
+var vbo_quad_coord = null;
+var vbo_quad_color = null;
+var vbo_quad_texel = null;
+
+var tex_white = null;
+var tex_view0 = null;
+
 var palette_index = 0;
 
-var viewport_xl = 0;
-var viewport_xr = 0;
-var viewport_yb = 0;
-var viewport_yt = 0;
+var tex_view0_active = false;
 
-function set_viewport(mode)
+var palette_index = 0;
+function colorPalette(color)
 {
-    if (mode === "letterbox")
-    {
-        if (cvs.width > cvs.height)
-        {
-            viewport_xl = (cvs.width-cvs.height)/2.0;
-            viewport_xr = (cvs.width+cvs.height)/2.0;
-            viewport_yb = 0;
-            viewport_yt = cvs.height;
-        }
-        else
-        {
-            viewport_xl = 0;
-            viewport_xr = cvs.width;
-            viewport_yb = (cvs.height-cvs.width)/2.0;
-            viewport_yt = (cvs.height+cvs.width)/2.0;
-        }
-    }
-    if (mode === "stretch")
-    {
-        viewport_xl = 0;
-        viewport_xr = cvs.width;
-        viewport_yb = 0;
-        viewport_yt = cvs.height;
-    }
-}
-
-function onchange_select_viewport()
-{
-    var element = document.getElementById("select_viewport");
-    var mode = element.options[element.selectedIndex].value;
-    set_viewport(mode);
-}
-
-function palette(color)
-{
-    var i = palette_index;
     var palettes = [
         // Spectral
-        ["#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#FEE08B", "#FFFFBF", "#E6F598", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2"],
-
+        [0x9E0142FF,0xD53E4FFF,0xF46D43FF,0xFDAE61FF,0xFEE08BFF,0xFFFFBFFF,0xE6F598FF,0xABDDA4FF,0x66C2A5FF,0x3288BDFF,0x5E4FA2FF],
         // BrownBlueGreen
-        ["#003C30", "#01665E", "#35978F", "#80CDC1", "#C7EAE5", "#F5F5F5", "#F6E8C3", "#DFC27D", "#BF812D", "#8C510A", "#543005"],
-
+        [0x003C30FF,0x01665EFF,0x35978FFF,0x80CDC1FF,0xC7EAE5FF,0xF5F5F5FF,0xF6E8C3FF,0xDFC27DFF,0xBF812DFF,0x8C510AFF,0x543005FF],
         // Blue
-        ["#08306B", "#08519C", "#2171B5", "#4292C6", "#6BAED6", "#9ECAE1", "#C6DBEF", "#DEEBF7", "#F7FBFF"],
-
+        [0x08306BFF,0x08519CFF,0x2171B5FF,0x4292C6FF,0x6BAED6FF,0x9ECAE1FF,0xC6DBEFFF,0xDEEBF7FF,0xF7FBFFFF],
         // GreenBlue
-        ["#084081", "#0868AC", "#2B8CBE", "#4EB3D3", "#7BCCC4", "#A8DDB5", "#CCEBC5", "#E0F3DB", "#F7FCF0"],
-
+        [0x084081FF,0x0868ACFF,0x2B8CBEFF,0x4EB3D3FF,0x7BCCC4FF,0xA8DDB5FF,0xCCEBC5FF,0xE0F3DBFF,0xF7FCF0FF],
         // Set 1
-        ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF"]
+        [0xE41A1CFF,0x377EB8FF,0x4DAF4AFF,0x984EA3FF,0xFF7F00FF,0xFFFF33FF,0xA65628FF,0xF781BFFF]
     ];
-    return palettes[i][color % (palettes[i].length)];
+    return palettes[palette_index][color % (palettes[palette_index].length)];
 }
 
-function x_ndc_to_viewport(x_ndc) { return viewport_xl + (viewport_xr-viewport_xl)*(0.5+0.5*x_ndc); }
-function y_ndc_to_viewport(y_ndc) { return viewport_yb + (viewport_yt-viewport_yb)*(0.5+0.5*y_ndc); }
+function userXToView(x) { return x*cvs.height/cvs.width; }
+function userYToView(y) { return y; }
+function pixelXToUser(x) { return -1.0 + 2.0*x/cvs.width; }
+function pixelYToUser(y) { return -1.0 + 2.0*y/cvs.height; }
+function pixelWToUser(x) { return 2.0*x/cvs.width; }
+function pixelHToUser(y) { return 2.0*y/cvs.height; }
 
-function render()
+function generateTriangles(commands)
 {
-    var status = document.getElementById("status");
+    tex_view0_active = false;
+    var coords = [];
+    var colors = [];
+    var num_elements = 0;
 
-    if (has_connection && cmd_data != 0)
+    var little_endian = true;
+    var view = new DataView(commands);
+    var offset = 0;
+
+    while (offset < view.byteLength)
     {
-        status.innerHTML = "Connected!";
+        var mode = view.getUint8(offset, little_endian); offset += 1;
+        var color_index = view.getUint8(offset, little_endian); offset += 1;
 
-        var select_color = document.getElementById("color_palette");
-        palette_index = parseInt(select_color.options[select_color.selectedIndex].value);
+        var color = colorPalette(color_index);
+        var color_r = (color >> 24) & 0xFF;
+        var color_g = (color >> 16) & 0xFF;
+        var color_b = (color >>  8) & 0xFF;
+        var color_a = (color >>  0) & 0xFF;
 
-        // @ Maybe TypedArray has better perf for many points?
-        // @ Negotiate endianness with server
-        var little_endian = true;
-        var view = new DataView(cmd_data);
-        var offset = 0;
-
-        ctx.fillStyle="#2a2a2a";
-        // ctx.fillRect(viewport_xl, viewport_yb, viewport_xr-viewport_xl, viewport_yt-viewport_yb);
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-        ctx.fill();
-
-        while (offset < view.byteLength)
+        if (mode == 1) // point2
         {
-            var a = cvs.height/cvs.width;
-            var mode = view.getUint8(offset, little_endian); offset += 1;
-            if (mode == 1) // point2
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x = x_ndc_to_viewport(x_ndc);
-                var y = y_ndc_to_viewport(y_ndc);
+            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
 
-                ctx.fillStyle = palette(color);
-                ctx.beginPath();
-                ctx.fillRect(x-3,y-3,6,6);
-                ctx.fill();
-            }
-            else if (mode == 2) // point3
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var z_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            }
-            else if (mode == 3) // line2
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x1_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x1 = x_ndc_to_viewport(x1_ndc);
-                var y1 = y_ndc_to_viewport(y1_ndc);
-                var x2 = x_ndc_to_viewport(x2_ndc);
-                var y2 = y_ndc_to_viewport(y2_ndc);
+            // coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
+            // colors.push(color_r,color_g,color_b,color_a,
+            //             color_r,color_g,color_b,color_a,
+            //             color_r,color_g,color_b,color_a,
+            //             color_r,color_g,color_b,color_a,
+            //             color_r,color_g,color_b,color_a,
+            //             color_r,color_g,color_b,color_a);
+            // num_elements += 6;
+        }
+        else if (mode == 2) // point3
+        {
+            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var z_ndc = view.getFloat32(offset, little_endian); offset += 4;
+        }
+        else if (mode == 3) // line2
+        {
+            var x1 = view.getFloat32(offset, little_endian); offset += 4;
+            var y1 = view.getFloat32(offset, little_endian); offset += 4;
+            var x2 = view.getFloat32(offset, little_endian); offset += 4;
+            var y2 = view.getFloat32(offset, little_endian); offset += 4;
 
-                ctx.strokeStyle = palette(color);
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            }
-            else if (mode == 4) // line3
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x1_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var z1_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var z2_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            }
-            else if (mode == 5) // rect
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var w_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var h_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x = x_ndc_to_viewport(x_ndc);
-                var y = y_ndc_to_viewport(y_ndc);
-                var w = x_ndc_to_viewport(x_ndc+w_ndc)-x;
-                var h = x_ndc_to_viewport(x_ndc+w_ndc)-y;
+            var ln = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+            var nx = -(y2-y1) / ln;
+            var ny = (x2-x1) / ln;
 
-                ctx.fillStyle = palette(color);
-                ctx.beginPath();
-                ctx.fillRect(x,y,w,h);
-                ctx.fill();
-            }
-            else if (mode == 6) // circle
-            {
-                var color = view.getUint8(offset, little_endian); offset += 1;
-                var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var r_ndc = view.getFloat32(offset, little_endian); offset += 4;
-                var x = x_ndc_to_viewport(x_ndc);
-                var y = y_ndc_to_viewport(y_ndc);
+            var w = pixelWToUser(4);
+            var x11 = userXToView(x1 - nx*w);
+            var y11 = userYToView(y1 - ny*w);
+            var x21 = userXToView(x2 - nx*w);
+            var y21 = userYToView(y2 - ny*w);
+            var x12 = userXToView(x1 + nx*w);
+            var y12 = userYToView(y1 + ny*w);
+            var x22 = userXToView(x2 + nx*w);
+            var y22 = userYToView(y2 + ny*w);
 
-                ctx.fillStyle = palette(color);
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.arc(x, y, r_ndc, 0, Math.PI*2.0);
-                ctx.fill();
+            coords.push(x11,y11, x21,y21, x22,y22, x22,y22, x12,y12, x11,y11);
+            colors.push(color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a);
+            num_elements += 6;
+        }
+        else if (mode == 4) // line3
+        {
+            var x1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var z1_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var x2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var z2_ndc = view.getFloat32(offset, little_endian); offset += 4;
+        }
+        else if (mode == 5) // rect
+        {
+            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var w_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var h_ndc = view.getFloat32(offset, little_endian); offset += 4;
+        }
+        else if (mode == 6) // circle
+        {
+            var x = view.getFloat32(offset, little_endian); offset += 4;
+            var y = view.getFloat32(offset, little_endian); offset += 4;
+            var r = view.getFloat32(offset, little_endian); offset += 4;
+
+            var r_user = pixelWToUser(r);
+            var n = 32;
+            for (var i = 0; i < n; i++)
+            {
+                var t1 = 2.0*3.1415926*i/n;
+                var t2 = 2.0*3.1415926*(i+1)/n;
+                var x1 = userXToView(x);
+                var y1 = userYToView(y);
+                var x2 = userXToView(x + r_user*Math.cos(t1));
+                var y2 = userYToView(y + r_user*Math.sin(t1));
+                var x3 = userXToView(x + r_user*Math.cos(t2));
+                var y3 = userYToView(y + r_user*Math.sin(t2));
+                coords.push(x1,y1, x2,y2, x3,y3);
+                colors.push(color_r,color_g,color_b, color_a,
+                            color_r,color_g,color_b, color_a,
+                            color_r,color_g,color_b, color_a);
+                num_elements += 3;
             }
         }
+        else if (mode == 7) // image
+        {
+            // var width = commands[i]; i++;
+            // var height = commands[i]; i++;
+            // // channels, gray, etc.
+            // var data = new Uint8Array(width*height*4);
+            // data.set(commands.slice(i, i+width*height*4));
+            // i += width*height*4;
+
+            // gl.bindTexture(gl.TEXTURE_2D, tex_view0);
+            // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            // gl.bindTexture(gl.TEXTURE_2D, null);
+
+            // tex_view0_active = true;
+        }
     }
-    else
-    {
-        status.innerHTML = "No connection";
-    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_coord);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
+    gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.STATIC_DRAW);
+
+    return num_elements;
 }
 
-function loop()
+function createShader(gl, type, source)
 {
-    setTimeout(function()
-    {
-        requestAnimationFrame(loop);
-        render();
-    }, 1000 / fps);
+    var shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    if (success)
+        return shader;
+    console.log(gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
 }
 
-function try_connect()
+function createProgram(gl, vs, fs)
+{
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+    if (success)
+        return program;
+    console.log(gl.getProgramInfoLog(program));
+    gl.deleteProgram(program);
+}
+
+function init()
+{
+    // Compile the ubershader
+    var shader_vs_src = document.getElementById("shader_vs").text;
+    var shader_fs_src = document.getElementById("shader_fs").text;
+    var shader_vs = createShader(gl, gl.VERTEX_SHADER, shader_vs_src);
+    var shader_fs = createShader(gl, gl.FRAGMENT_SHADER, shader_fs_src);
+    program = createProgram(gl, shader_vs, shader_fs);
+
+    // Get attribute locations
+    loc_coord = gl.getAttribLocation(program, "coord");
+    loc_color = gl.getAttribLocation(program, "color");
+    loc_texel = gl.getAttribLocation(program, "texel");
+    loc_chan0 = gl.getUniformLocation(program, "chan0");
+
+    // These vertex buffers are updated in generateTriangles
+    vbo_user_coord = gl.createBuffer();
+    vbo_user_color = gl.createBuffer();
+    vbo_user_texel = gl.createBuffer();
+
+    // These vertex buffers are used to draw background textures
+    vbo_quad_coord = gl.createBuffer();
+    vbo_quad_color = gl.createBuffer();
+    vbo_quad_texel = gl.createBuffer();
+    {
+        var coords = [ -1,-1, +1,-1, +1,+1, +1,+1, -1,+1, -1,-1 ];
+        var texels = [ 0,0, 1,0, 1,1, 1,1, 0,1, 0,0 ];
+        var colors = [ 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255 ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_coord); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_color); gl.bufferData(gl.ARRAY_BUFFER, new   Uint8Array(colors), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_texel); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texels), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+
+    // This texture is for drawing non-textured geometry
+    tex_white = gl.createTexture();
+    {
+        var data = new Uint8Array([255,255,255,255]);
+        gl.bindTexture(gl.TEXTURE_2D, tex_white);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+    // These textures can be assigned data by the user (from generateTriangles)
+    tex_view0 = gl.createTexture();
+}
+
+function draw(commands)
+{
+    // Generate geometry every frame because we might decide to change it that often
+    // (as opposed to only generating it when we parse commands)
+    num_elements = generateTriangles(commands);
+
+    // Resize framebuffer resolution to match size of displayed window
+    if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
+    {
+        cvs.width  = cvs.clientWidth;
+        cvs.height = cvs.clientHeight;
+    }
+
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(program);
+
+    // Draw background texture (if any)
+    if (tex_view0_active)
+    {
+        gl.activeTexture(gl.TEXTURE0 + 0);
+        gl.bindTexture(gl.TEXTURE_2D, tex_view0);
+        gl.enableVertexAttribArray(loc_coord);
+        gl.enableVertexAttribArray(loc_color);
+        gl.enableVertexAttribArray(loc_texel);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_coord);
+        gl.vertexAttribPointer(loc_coord, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_color);
+        gl.vertexAttribPointer(loc_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_texel);
+        gl.vertexAttribPointer(loc_texel, 2, gl.FLOAT, false, 0, 0);
+        gl.uniform1i(loc_chan0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+    // Draw user geometry
+    if (num_elements > 0)
+    {
+        gl.activeTexture(gl.TEXTURE0 + 0);
+        gl.bindTexture(gl.TEXTURE_2D, tex_white);
+        gl.enableVertexAttribArray(loc_coord);
+        gl.enableVertexAttribArray(loc_color);
+        gl.disableVertexAttribArray(loc_texel);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_coord);
+        gl.vertexAttribPointer(loc_coord, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
+        gl.vertexAttribPointer(loc_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+        gl.uniform1i(loc_chan0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, num_elements);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+}
+
+function connect()
 {
     setInterval(function()
     {
@@ -228,23 +361,56 @@ function try_connect()
     }, 1000);
 }
 
-function app_onload()
+var animation_frame_t_first = null;
+var animation_frame_t_prev = null;
+function anim(t)
+{
+    var delta = 1.0/60.0;
+    var elapsed = 0.0;
+    if (t)
+    {
+        if (!animation_frame_t_first) animation_frame_t_first = t;
+        if (!animation_frame_t_prev) animation_frame_t_prev = t;
+        delta = (t - animation_frame_t_prev)/1000.0;
+        elapsed = (t - animation_frame_t_first)/1000.0;
+        animation_frame_t_prev = t;
+    }
+
+    var status = document.getElementById("status");
+    if (has_connection && cmd_data != null)
+    {
+        status.innerHTML = "Connected";
+        draw(cmd_data);
+    }
+    else
+    {
+        status.innerHTML = "No connection";
+    }
+
+    var p_fps = document.getElementById("fps");
+    p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
+
+    requestAnimationFrame(anim);
+}
+
+function load()
 {
     if (!("WebSocket" in window))
     {
         alert("Your browser does not support WebSockets! Sorry, good luck!");
+        return;
     }
-    else
-    {
-        cvs = document.getElementById("canvas");
-        ctx = canvas.getContext("2d");
-        loop();
-        try_connect();
-        set_viewport("letterbox");
-    }
-}
 
-function ws_shutdown_server()
-{
-    ws.send("shutdown");
+    cvs = document.getElementById("canvas");
+    // gl = cvs.getContext("webgl");
+    gl = cvs.getContext("webgl", {antialias: false});
+    if (!gl)
+    {
+        console.log("Your browser does not support WebGL! Sorry, good luck!");
+        return;
+    }
+
+    connect();
+    init();
+    anim();
 }
