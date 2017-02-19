@@ -1,6 +1,6 @@
 // interface
 int tcp_listen(int port);
-int tcp_accept(int tcp_listen_socket);
+int tcp_accept();
 int tcp_shutdown();
 int tcp_send(const void *data, int size, int *sent_bytes);
 int tcp_recv(void *buffer, int capacity, int *read_bytes);
@@ -50,6 +50,7 @@ int tcp_listen(int listen_port)
 {
     #if 1
     #ifdef TCP_WINDOWS
+    struct WSAData wsa;
     DWORD yes = 1;
     #else
     int yes = 1;
@@ -58,7 +59,6 @@ int tcp_listen(int listen_port)
     tcp_has_listen_socket = 0;
 
     #ifdef TCP_WINDOWS
-    struct WSAData wsa;
     if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
         return 0;
     #endif
