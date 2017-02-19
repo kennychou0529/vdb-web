@@ -1,5 +1,6 @@
 var ws = null;
 var cmd_data = null;
+var num_elements = 0;
 var has_connection = false;
 
 var cvs = null;
@@ -24,6 +25,8 @@ var tex_view0 = null;
 var palette_index = 0;
 
 var tex_view0_active = false;
+var tex_view0_width = 0;
+var tex_view0_height = 0;
 
 var palette_index = 0;
 function colorPalette(color)
@@ -52,7 +55,8 @@ function pixelHToUser(y) { return 2.0*y/cvs.height; }
 
 function generateTriangles(commands)
 {
-    tex_view0_active = false;
+    // tex_view0_active = false;
+
     var coords = [];
     var colors = [];
     var num_elements = 0;
@@ -163,24 +167,34 @@ function generateTriangles(commands)
                 num_elements += 3;
             }
         }
-        else if (mode == 7) // image
+        else if (mode == 7) // image_rgb8
         {
-            // var width = commands[i]; i++;
-            // var height = commands[i]; i++;
-            // // channels, gray, etc.
-            // var data = new Uint8Array(width*height*4);
-            // data.set(commands.slice(i, i+width*height*4));
-            // i += width*height*4;
+            var width = view.getUint32(offset, little_endian); offset += 4;
+            var height = view.getUint32(offset, little_endian); offset += 4;
+            var size = width*height*3;
 
-            // gl.bindTexture(gl.TEXTURE_2D, tex_view0);
-            // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            // gl.bindTexture(gl.TEXTURE_2D, null);
+            var data = new Uint8Array(commands, offset, size);
+            offset += size;
 
-            // tex_view0_active = true;
+            // if (tex_view0_width != width || tex_view0_height != height)
+            if (1) // @ texture upload optimization
+            {
+                tex_view0_width = width;
+                tex_view0_height = height;
+                gl.bindTexture(gl.TEXTURE_2D, tex_view0);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, data);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+            }
+            else
+            {
+                gl.bindTexture(gl.TEXTURE_2D, tex_view0);
+                gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGB, gl.UNSIGNED_BYTE, data);
+            }
+            tex_view0_active = true;
         }
     }
 
@@ -267,14 +281,11 @@ function init()
 
     // These textures can be assigned data by the user (from generateTriangles)
     tex_view0 = gl.createTexture();
+    tex_view0_active = false;
 }
 
 function draw(commands)
 {
-    // Generate geometry every frame because we might decide to change it that often
-    // (as opposed to only generating it when we parse commands)
-    num_elements = generateTriangles(commands);
-
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
     {
@@ -354,6 +365,7 @@ function connect()
 
             ws.onmessage = function(e)
             {
+                num_elements = generateTriangles(e.data);
                 cmd_data = e.data;
                 // @ TODO: Parse and unpack data, convert to correct endian, etc
             }

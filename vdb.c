@@ -434,6 +434,7 @@ static unsigned char vdb_mode_line2 = 3;
 static unsigned char vdb_mode_line3 = 4;
 static unsigned char vdb_mode_rect = 5;
 static unsigned char vdb_mode_circle = 6;
+static unsigned char vdb_mode_image_rgb8 = 7;
 
 void vdb_color1i(int c)
 {
@@ -506,4 +507,15 @@ void vdb_circle(float x, float y, float r)
     vdb_push_r32(x);
     vdb_push_r32(y);
     vdb_push_r32(r);
+}
+
+void vdb_image_rgb8(const void *data, int w, int h)
+{
+    // @ only send image once per begin/end pair
+    // or finer grained control?
+    vdb_push_u08(vdb_mode_image_rgb8);
+    vdb_push_u08(vdb_current_color);
+    vdb_push_u32(w);
+    vdb_push_u32(h);
+    vdb_push_bytes(data, w*h*3);
 }
