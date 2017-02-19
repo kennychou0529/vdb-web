@@ -7,7 +7,6 @@
 #define vdb_log_once(...) { static int first = 1; if (first) { printf("[vdb] "); printf(__VA_ARGS__); first = 0; } }
 #define vdb_err_once(...) { static int first = 1; if (first) { printf("[vdb] Error at line %d in file %s:\n[vdb] ", __LINE__, __FILE__); printf(__VA_ARGS__); first = 0; } }
 #define vdb_critical(EXPR) if (!(EXPR)) { printf("[vdb] Something went wrong at line %d in file %s\n", __LINE__, __FILE__); vdb_shared->critical_error = 1; return 0; }
-#define vdb_unused_param(P) (void)(P)
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
@@ -107,11 +106,7 @@ int vdb_signal_data_sent()  { int one = 1; return  write(vdb_shared->done[1], &o
 void vdb_sleep(int ms)      { usleep(ms*1000); }
 #endif
 
-#ifdef VDB_WINDOWS
-DWORD WINAPI vdb_send_thread(void *vdata)
-#else
 int vdb_send_thread()
-#endif
 {
     vdb_shared_t *vs = vdb_shared;
     unsigned char *frame; // @ UGLY: form_frame should modify a char *?
@@ -144,17 +139,14 @@ int vdb_send_thread()
         vdb_critical(vdb_signal_data_sent());
     }
     vs->has_send_thread = 0;
-    #ifdef VDB_WINDOWS
-    vdb_unused_param(vdata);
-    #endif
     return 0;
 }
 
 #ifdef VDB_WINDOWS
-DWORD WINAPI vdb_recv_thread(void *vdata)
-#else
-int vdb_recv_thread()
+DWORD WINAPI vdb_win_send_thread(void *vdata) { (void)(vdata); return vdb_send_thread(); }
 #endif
+
+int vdb_recv_thread()
 {
     vdb_shared_t *vs = vdb_shared;
     int read_bytes;
@@ -275,7 +267,7 @@ int vdb_recv_thread()
         // as well, even though file descriptors are shared anyway.
         if (!vs->has_send_thread)
         {
-            CreateThread(0, 0, vdb_send_thread, NULL, 0, 0); // vdb_send_thread sets has_send_thread to 0 upon returning
+            CreateThread(0, 0, vdb_win_send_thread, NULL, 0, 0); // vdb_send_thread sets has_send_thread to 0 upon returning
             vs->has_send_thread = 1;
         }
         #endif
@@ -310,11 +302,12 @@ int vdb_recv_thread()
             vs->msg_continue = 1;
         }
     }
-    #ifdef VDB_WINDOWS
-    vdb_unused_param(vdata);
-    #endif
     return 0;
 }
+
+#ifdef VDB_WINDOWS
+DWORD WINAPI vdb_win_recv_thread(void *vdata) { (void)(vdata); return vdb_recv_thread(); }
+#endif
 
 void *vdb_push_bytes(const void *data, int count)
 {
@@ -373,14 +366,12 @@ int vdb_begin()
     if (!vdb_shared)
     {
         #ifdef VDB_UNIX
-        // Allocate, zero-initialize and share with any child processes
         vdb_shared = (vdb_shared_t*)mmap(NULL, sizeof(vdb_shared_t),
                                          PROT_READ|PROT_WRITE,
                                          MAP_SHARED|MAP_ANONYMOUS, -1, 0);
         if (vdb_shared == MAP_FAILED)
             vdb_shared = 0;
         #else
-        // Allocate and zero-initialize
         vdb_shared = (vdb_shared_t*)calloc(sizeof(vdb_shared_t),1);
         #endif
 
@@ -402,12 +393,12 @@ int vdb_begin()
         vdb_signal_data_sent(); // Needed for first vdb_end call
         #else
         vdb_shared->send_semaphore = CreateSemaphore(0, 0, 1, 0);
-        CreateThread(0, 0, vdb_recv_thread, NULL, 0, 0);
+        CreateThread(0, 0, vdb_win_recv_thread, NULL, 0, 0);
         #endif
 
         vdb_shared->work_buffer = vdb_shared->swapbuffer1;
         vdb_shared->send_buffer = vdb_shared->swapbuffer2;
-        // Remaining parameters should be initialized to zero
+        // Remaining parameters should be initialized to zero by calloc or mmap
     }
     if (vdb_shared->critical_error)
     {
@@ -551,8 +542,6 @@ void vdb_circle(float x, float y, float r)
 
 void vdb_image_rgb8(const void *data, int w, int h)
 {
-    // @ only send image once per begin/end pair
-    // or finer grained control?
     vdb_push_u08(vdb_mode_image_rgb8);
     vdb_push_u08(vdb_current_color);
     vdb_push_u32(w);
