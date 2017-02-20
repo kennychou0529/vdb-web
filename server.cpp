@@ -74,14 +74,14 @@ void draw_cool_spinny_thing(float dt)
 
 int main()
 {
-    const int width = 256;
-    const int height = 256;
+    const int width = 8;
+    const int height = 4;
     unsigned char image[width*height*3];
     for (int y = 0; y < height; y++)
     for (int x = 0; x < width; x++)
     {
-        image[(x + y*width)*3+0] = (x % 64) + 100;
-        image[(x + y*width)*3+1] = (y % 64) + 100;
+        image[(x + y*width)*3+0] = (x % 64)*6 + 100;
+        image[(x + y*width)*3+1] = (y % 64)*6 + 100;
         image[(x + y*width)*3+2] = 128;
     }
 
@@ -89,8 +89,9 @@ int main()
     {
         static float t = 0.0f;
         t += 1.0f/20.0f;
+        vdb_aspect((float)width, (float)height);
         vdb_image_rgb8(image, width, height);
-        vdb_color1i(2); vdb_circle(sinf(t), 0.0f, 16.0f);
+        vdb_color1i(2); vdb_circle(sinf(t), cosf(t), 16.0f);
     }
 
     while (vdb_loop(60))

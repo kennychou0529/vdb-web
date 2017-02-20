@@ -45,7 +45,9 @@ function colorPalette(color)
     return palettes[palette_index][color % (palettes[palette_index].length)];
 }
 
-function userXToView(x) { return x*cvs.height/cvs.width; }
+// function userXToView(x) { return x*cvs.height/cvs.width; }
+// function userYToView(y) { return y; }
+function userXToView(x) { return x; }
 function userYToView(y) { return y; }
 function pixelXToUser(x) { return -1.0 + 2.0*x/cvs.width; }
 function pixelYToUser(y) { return -1.0 + 2.0*y/cvs.height; }
@@ -149,16 +151,17 @@ function generateTriangles(commands)
 
             var r_user = pixelWToUser(r);
             var n = 32;
+            var a = cvs.width/cvs.height;
             for (var i = 0; i < n; i++)
             {
                 var t1 = 2.0*3.1415926*i/n;
                 var t2 = 2.0*3.1415926*(i+1)/n;
                 var x1 = userXToView(x);
                 var y1 = userYToView(y);
-                var x2 = userXToView(x + r_user*Math.cos(t1));
-                var y2 = userYToView(y + r_user*Math.sin(t1));
-                var x3 = userXToView(x + r_user*Math.cos(t2));
-                var y3 = userYToView(y + r_user*Math.sin(t2));
+                var x2 = x1 + r_user*Math.cos(t1);
+                var y2 = y1 + r_user*Math.sin(t1)*a;
+                var x3 = x1 + r_user*Math.cos(t2);
+                var y3 = y1 + r_user*Math.sin(t2)*a;
                 coords.push(x1,y1, x2,y2, x3,y3);
                 colors.push(color_r,color_g,color_b, color_a,
                             color_r,color_g,color_b, color_a,
@@ -200,6 +203,15 @@ function generateTriangles(commands)
             }
             tex_view0_active = true;
             data = null;
+        }
+        else if (mode == 255) // aspect
+        {
+            var w = view.getFloat32(offset, little_endian); offset += 4;
+            var h = view.getFloat32(offset, little_endian); offset += 4;
+            var new_h = cvs.clientWidth * h / w;
+
+            var element = document.getElementById("canvas");
+            element.style.height = new_h + "px";
         }
     }
 
