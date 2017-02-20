@@ -466,6 +466,7 @@ static unsigned char vdb_mode_line3 = 4;
 static unsigned char vdb_mode_rect = 5;
 static unsigned char vdb_mode_circle = 6;
 static unsigned char vdb_mode_image_rgb8 = 7;
+static unsigned char vdb_mode_aspect = 255;
 
 static float vdb_xrange_left = -1.0f;
 static float vdb_xrange_right = +1.0f;
@@ -520,6 +521,14 @@ void vdb_push_y(float y)
 void vdb_push_z(float z)
 {
     vdb_push_r32(+1.0f - 2.0f*(z-vdb_zrange_near)/(vdb_zrange_far-vdb_zrange_near));
+}
+
+void vdb_aspect(float w, float h)
+{
+    vdb_push_u08(vdb_mode_aspect);
+    vdb_push_u08(0);
+    vdb_push_r32(w);
+    vdb_push_r32(h);
 }
 
 void vdb_point2(float x, float y)
