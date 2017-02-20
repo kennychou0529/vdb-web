@@ -467,6 +467,13 @@ static unsigned char vdb_mode_rect = 5;
 static unsigned char vdb_mode_circle = 6;
 static unsigned char vdb_mode_image_rgb8 = 7;
 
+static float vdb_xrange_left = -1.0f;
+static float vdb_xrange_right = +1.0f;
+static float vdb_yrange_bottom = -1.0f;
+static float vdb_yrange_top = +1.0f;
+static float vdb_zrange_far = -1.0f;
+static float vdb_zrange_near = +1.0f;
+
 void vdb_color1i(int c)
 {
     if (c < 0) c = 0;
@@ -482,51 +489,84 @@ void vdb_color1f(float c)
     vdb_current_color = (unsigned char)(ci);
 }
 
+void vdb_xrange(float left, float right)
+{
+    vdb_xrange_left = left;
+    vdb_xrange_right = right;
+}
+
+void vdb_yrange(float bottom, float top)
+{
+    vdb_yrange_bottom = bottom;
+    vdb_yrange_top = top;
+}
+
+void vdb_zrange(float z_near, float z_far)
+{
+    vdb_zrange_near = z_near;
+    vdb_zrange_far = z_far;
+}
+
+void vdb_push_x(float x)
+{
+    vdb_push_r32(-1.0f + 2.0f*(x-vdb_xrange_left)/(vdb_xrange_right-vdb_xrange_left));
+}
+
+void vdb_push_y(float y)
+{
+    vdb_push_r32(-1.0f + 2.0f*(y-vdb_yrange_bottom)/(vdb_yrange_top-vdb_yrange_bottom));
+}
+
+void vdb_push_z(float z)
+{
+    vdb_push_r32(+1.0f - 2.0f*(z-vdb_zrange_near)/(vdb_zrange_far-vdb_zrange_near));
+}
+
 void vdb_point2(float x, float y)
 {
     vdb_push_u08(vdb_mode_point2);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x);
-    vdb_push_r32(y);
+    vdb_push_x(x);
+    vdb_push_y(y);
 }
 
 void vdb_point3(float x, float y, float z)
 {
     vdb_push_u08(vdb_mode_point3);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x);
-    vdb_push_r32(y);
-    vdb_push_r32(z);
+    vdb_push_x(x);
+    vdb_push_y(y);
+    vdb_push_z(z);
 }
 
 void vdb_line2(float x1, float y1, float x2, float y2)
 {
     vdb_push_u08(vdb_mode_line2);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x1);
-    vdb_push_r32(y1);
-    vdb_push_r32(x2);
-    vdb_push_r32(y2);
+    vdb_push_x(x1);
+    vdb_push_y(y1);
+    vdb_push_x(x2);
+    vdb_push_y(y2);
 }
 
 void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
 {
     vdb_push_u08(vdb_mode_line3);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x1);
-    vdb_push_r32(y1);
-    vdb_push_r32(z1);
-    vdb_push_r32(x2);
-    vdb_push_r32(y2);
-    vdb_push_r32(z2);
+    vdb_push_x(x1);
+    vdb_push_y(y1);
+    vdb_push_z(z1);
+    vdb_push_x(x2);
+    vdb_push_y(y2);
+    vdb_push_z(z2);
 }
 
 void vdb_rect(float x, float y, float w, float h)
 {
     vdb_push_u08(vdb_mode_rect);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x);
-    vdb_push_r32(y);
+    vdb_push_x(x);
+    vdb_push_y(y);
     vdb_push_r32(w);
     vdb_push_r32(h);
 }
@@ -535,8 +575,8 @@ void vdb_circle(float x, float y, float r)
 {
     vdb_push_u08(vdb_mode_circle);
     vdb_push_u08(vdb_current_color);
-    vdb_push_r32(x);
-    vdb_push_r32(y);
+    vdb_push_x(x);
+    vdb_push_y(y);
     vdb_push_r32(r);
 }
 
