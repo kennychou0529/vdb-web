@@ -91,7 +91,7 @@ int main()
         t += 1.0f/20.0f;
         vdb_aspect((float)width, (float)height);
         vdb_image_rgb8(image, width, height);
-        vdb_color1i(2); vdb_circle(sinf(t), cosf(t), 16.0f);
+        vdb_color1i(2); vdb_circle(sinf(t), cosf(t), 8.0f);
     }
 
     while (vdb_loop(60))
