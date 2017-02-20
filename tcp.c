@@ -8,20 +8,21 @@ int tcp_sendall(const void *data, int size);
 
 // implementation
 #if defined(_WIN32) || defined(_WIN64)
+
 #define TCP_WINDOWS
-#else
-#define TCP_UNIX
-#endif
-#ifdef TCP_WINDOWS
 #define WIN32_LEAN_AND_MEAN
-#define TCP_INVALID_SOCKET INVALID_SOCKET
-#define TCP_SOCKET_ERROR SOCKET_ERROR
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
+#define TCP_INVALID_SOCKET INVALID_SOCKET
+#define TCP_SOCKET_ERROR SOCKET_ERROR
+#define tcp_cleanup() WSACleanup()
+#define tcp_close(s) closesocket(s)
+#define tcp_socket_t SOCKET
+
 #else
-#define TCP_INVALID_SOCKET -1
-#define TCP_SOCKET_ERROR -1
+
+#define TCP_UNIX
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -29,16 +30,12 @@ int tcp_sendall(const void *data, int size);
 #include <netdb.h>
 #include <fcntl.h>
 #include <errno.h>
-#endif
-
-#ifdef TCP_WINDOWS
-#define tcp_cleanup() WSACleanup()
-#define tcp_close(s) closesocket(s)
-#define tcp_socket_t SOCKET
-#else
+#define TCP_INVALID_SOCKET -1
+#define TCP_SOCKET_ERROR -1
 #define tcp_cleanup()
 #define tcp_close(s) close(s)
 #define tcp_socket_t int
+
 #endif
 
 static tcp_socket_t tcp_client_socket = 0;
@@ -48,25 +45,23 @@ static int tcp_has_listen_socket = 0;
 
 int tcp_listen(int listen_port)
 {
-    #if 1
+    #if 1 // INADDRY_ANY strategy
+
     #ifdef TCP_WINDOWS
     struct WSAData wsa;
     DWORD yes = 1;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
+        return 0;
     #else
     int yes = 1;
     #endif
+
     struct sockaddr_in addr = {0};
     tcp_has_listen_socket = 0;
-
-    #ifdef TCP_WINDOWS
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
-        return 0;
-    #endif
 
     tcp_listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_listen_socket == TCP_INVALID_SOCKET)
     {
-        printf("fuck\n");
         tcp_cleanup();
         return 0;
     }
@@ -96,7 +91,9 @@ int tcp_listen(int listen_port)
     }
     tcp_has_listen_socket = 1;
     return tcp_has_listen_socket;
-    #else
+
+    #else // Search for first available address strategy
+
     struct addrinfo *a = 0;
     struct addrinfo *info = 0;
     struct addrinfo hints = {0};
