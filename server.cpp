@@ -80,18 +80,18 @@ int main()
     for (int y = 0; y < height; y++)
     for (int x = 0; x < width; x++)
     {
-        image[(x + y*width)*3+0] = (x % 64)*6 + 100;
-        image[(x + y*width)*3+1] = (y % 64)*6 + 100;
+        image[(x + y*width)*3+0] = (x % 64)*8 + 100;
+        image[(x + y*width)*3+1] = (y % 64)*8 + 100;
         image[(x + y*width)*3+2] = 128;
     }
 
-    while (vdb_loop(20))
+    while (vdb_loop(30))
     {
         static float t = 0.0f;
-        t += 1.0f/20.0f;
+        t += 1.0f/30.0f;
         vdb_aspect((float)width, (float)height);
         vdb_image_rgb8(image, width, height);
-        vdb_color1i(2); vdb_circle(sinf(t), cosf(t), 8.0f);
+        vdb_color1i(4); vdb_circle(sinf(t), cosf(t), 8.0f);
     }
 
     while (vdb_loop(60))

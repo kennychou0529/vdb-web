@@ -81,15 +81,6 @@ function generateTriangles(commands)
         {
             var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
             var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-
-            // coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
-            // colors.push(color_r,color_g,color_b,color_a,
-            //             color_r,color_g,color_b,color_a,
-            //             color_r,color_g,color_b,color_a,
-            //             color_r,color_g,color_b,color_a,
-            //             color_r,color_g,color_b,color_a,
-            //             color_r,color_g,color_b,color_a);
-            // count += 6;
         }
         else if (mode == 2) // point3
         {
@@ -163,9 +154,9 @@ function generateTriangles(commands)
                 var x3 = x1 + r*Math.cos(t2)/wh;
                 var y3 = y1 + r*Math.sin(t2)/hh;
                 coords.push(x1,y1, x2,y2, x3,y3);
-                colors.push(color_r,color_g,color_b, color_a,
-                            color_r,color_g,color_b, color_a,
-                            color_r,color_g,color_b, color_a);
+                colors.push(color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a);
                 count += 3;
             }
         }
