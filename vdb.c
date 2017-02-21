@@ -531,7 +531,7 @@ void vdb_aspect(float w, float h)
     vdb_push_r32(h);
 }
 
-void vdb_point2(float x, float y)
+void vdb_point(float x, float y)
 {
     vdb_push_u08(vdb_mode_point2);
     vdb_push_u08(vdb_current_color);
@@ -539,7 +539,7 @@ void vdb_point2(float x, float y)
     vdb_push_y(y);
 }
 
-void vdb_point3(float x, float y, float z)
+void vdb_point3d(float x, float y, float z)
 {
     vdb_push_u08(vdb_mode_point3);
     vdb_push_u08(vdb_current_color);
@@ -548,7 +548,7 @@ void vdb_point3(float x, float y, float z)
     vdb_push_z(z);
 }
 
-void vdb_line2(float x1, float y1, float x2, float y2)
+void vdb_line(float x1, float y1, float x2, float y2)
 {
     vdb_push_u08(vdb_mode_line2);
     vdb_push_u08(vdb_current_color);
@@ -558,7 +558,7 @@ void vdb_line2(float x1, float y1, float x2, float y2)
     vdb_push_y(y2);
 }
 
-void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2)
+void vdb_line3d(float x1, float y1, float z1, float x2, float y2, float z2)
 {
     vdb_push_u08(vdb_mode_line3);
     vdb_push_u08(vdb_current_color);

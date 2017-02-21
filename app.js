@@ -27,6 +27,10 @@ var tex_view0_active = false;
 var tex_view0_width = 0;
 var tex_view0_height = 0;
 
+// Geometry style configuration
+var line_width = 4.0;   // in pixels
+var point_radius = 4.0; // in pixels
+
 var palette_index = 0;
 function colorPalette(color)
 {
@@ -44,15 +48,6 @@ function colorPalette(color)
     ];
     return palettes[palette_index][color % (palettes[palette_index].length)];
 }
-
-// function userXToView(x) { return x*cvs.height/cvs.width; }
-// function userYToView(y) { return y; }
-function userXToView(x) { return x; }
-function userYToView(y) { return y; }
-function pixelXToUser(x) { return -1.0 + 2.0*x/cvs.width; }
-function pixelYToUser(y) { return -1.0 + 2.0*y/cvs.height; }
-function pixelWToUser(x) { return 2.0*x/cvs.width; }
-function pixelHToUser(y) { return 2.0*y/cvs.height; }
 
 function generateTriangles(commands)
 {
@@ -79,8 +74,30 @@ function generateTriangles(commands)
 
         if (mode == 1) // point2
         {
-            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var x = view.getFloat32(offset, little_endian); offset += 4;
+            var y = view.getFloat32(offset, little_endian); offset += 4;
+
+            var rx = point_radius/(cvs.width/2.0);
+            var ry = point_radius/(cvs.height/2.0);
+            var n = 32;
+            var wh = cvs.width/2.0;
+            var hh = cvs.height/2.0;
+            for (var i = 0; i < n; i++)
+            {
+                var t1 = 2.0*3.1415926*i/n;
+                var t2 = 2.0*3.1415926*(i+1)/n;
+                var x1 = x;
+                var y1 = y;
+                var x2 = x1 + rx*Math.cos(t1);
+                var y2 = y1 + ry*Math.sin(t1);
+                var x3 = x1 + rx*Math.cos(t2);
+                var y3 = y1 + ry*Math.sin(t2);
+                coords.push(x1,y1, x2,y2, x3,y3);
+                colors.push(color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a);
+                count += 3;
+            }
         }
         else if (mode == 2) // point3
         {
@@ -99,15 +116,16 @@ function generateTriangles(commands)
             var nx = -(y2-y1) / ln;
             var ny = (x2-x1) / ln;
 
-            var w = pixelWToUser(4);
-            var x11 = userXToView(x1 - nx*w);
-            var y11 = userYToView(y1 - ny*w);
-            var x21 = userXToView(x2 - nx*w);
-            var y21 = userYToView(y2 - ny*w);
-            var x12 = userXToView(x1 + nx*w);
-            var y12 = userYToView(y1 + ny*w);
-            var x22 = userXToView(x2 + nx*w);
-            var y22 = userYToView(y2 + ny*w);
+            var rx = (line_width/2.0)/(cvs.width/2.0);
+            var ry = (line_width/2.0)/(cvs.height/2.0);
+            var x11 = x1 - nx*rx;
+            var y11 = y1 - ny*ry;
+            var x21 = x2 - nx*rx;
+            var y21 = y2 - ny*ry;
+            var x12 = x1 + nx*rx;
+            var y12 = y1 + ny*ry;
+            var x22 = x2 + nx*rx;
+            var y22 = y2 + ny*ry;
 
             coords.push(x11,y11, x21,y21, x22,y22, x22,y22, x12,y12, x11,y11);
             colors.push(color_r,color_g,color_b,color_a,
@@ -141,18 +159,16 @@ function generateTriangles(commands)
             var r = view.getFloat32(offset, little_endian); offset += 4;
 
             var n = 32;
-            var wh = cvs.width/2.0;
-            var hh = cvs.height/2.0;
             for (var i = 0; i < n; i++)
             {
                 var t1 = 2.0*3.1415926*i/n;
                 var t2 = 2.0*3.1415926*(i+1)/n;
                 var x1 = x;
                 var y1 = y;
-                var x2 = x1 + r*Math.cos(t1)/wh;
-                var y2 = y1 + r*Math.sin(t1)/hh;
-                var x3 = x1 + r*Math.cos(t2)/wh;
-                var y3 = y1 + r*Math.sin(t2)/hh;
+                var x2 = x1 + r*Math.cos(t1);
+                var y2 = y1 + r*Math.sin(t1);
+                var x3 = x1 + r*Math.cos(t2);
+                var y3 = y1 + r*Math.sin(t2);
                 coords.push(x1,y1, x2,y2, x3,y3);
                 colors.push(color_r,color_g,color_b,color_a,
                             color_r,color_g,color_b,color_a,
@@ -199,10 +215,10 @@ function generateTriangles(commands)
         {
             var w = view.getFloat32(offset, little_endian); offset += 4;
             var h = view.getFloat32(offset, little_endian); offset += 4;
-            var new_h = cvs.clientWidth * h / w;
+            var new_w = cvs.clientHeight * w / h;
 
             var element = document.getElementById("canvas");
-            element.style.height = new_h + "px";
+            element.style.width = new_w + "px";
         }
     }
 
@@ -383,7 +399,7 @@ function connect()
                 e.data = null;
             }
         }
-    }, 1000);
+    }, 250);
 }
 
 var animation_frame_t_first = null;
