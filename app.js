@@ -1,6 +1,6 @@
 var ws = null;
-var num_elements = 0;
 var has_connection = false;
+var cmd_data = null;
 
 var cvs = null;
 var gl = null;
@@ -314,12 +314,20 @@ function init()
 
 function draw()
 {
+    // Update parameters from GUI
+    line_width = parseFloat(document.getElementById("line_width").value);
+    point_radius = parseFloat(document.getElementById("point_radius").value);
+
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
     {
         cvs.width  = cvs.clientWidth;
         cvs.height = cvs.clientHeight;
     }
+
+    var num_elements = 0;
+    if (cmd_data != null)
+        num_elements = generateTriangles(cmd_data);
 
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
@@ -395,8 +403,7 @@ function connect()
 
             ws.onmessage = function(e)
             {
-                num_elements = generateTriangles(e.data);
-                e.data = null;
+                cmd_data = e.data;
             }
         }
     }, 250);
@@ -426,12 +433,19 @@ function anim(t)
     else
     {
         status.innerHTML = "No connection";
+        draw();
     }
 
     var p_fps = document.getElementById("fps");
     p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     requestAnimationFrame(anim);
+}
+
+function onKeyUp(e)
+{
+    if (event.keyCode == 13)
+        ws.send("c");
 }
 
 function load()
@@ -450,6 +464,8 @@ function load()
         console.log("Your browser does not support WebGL! Sorry, good luck!");
         return;
     }
+
+    document.onkeyup = onKeyUp;
 
     connect();
     init();
