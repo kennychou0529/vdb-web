@@ -10,7 +10,7 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VDB_WINDOWS
-#define _CRT_SECURE_NO_WARNINGS // @ Replace sprintf
+#define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
@@ -320,41 +320,22 @@ void *vdb_push_bytes(const void *data, int count)
         vdb_shared->work_buffer_used += count;
         return (void*)dst;
     }
-    return 0;
+    return NULL;
 }
 
-int vdb_push_u08(uint8_t x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(uint8_t) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(uint8_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(uint8_t);
-        return 1;
-    }
-    return 0;
-}
+#define _vdb_push_type(VALUE, TYPE)                                                  \
+    if (vdb_shared->work_buffer_used + sizeof(TYPE) <= VDB_WORK_BUFFER_SIZE)         \
+    {                                                                                \
+        TYPE *ptr = (TYPE*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used); \
+        vdb_shared->work_buffer_used += sizeof(TYPE);                                \
+        *ptr = VALUE;                                                                \
+        return ptr;                                                                  \
+    }                                                                                \
+    return NULL;
 
-int vdb_push_u32(uint32_t x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(uint32_t) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(uint32_t*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(uint32_t);
-        return 1;
-    }
-    return 0;
-}
-
-int vdb_push_r32(float x)
-{
-    if (vdb_shared->work_buffer_used + sizeof(float) <= VDB_WORK_BUFFER_SIZE)
-    {
-        *(float*)(vdb_shared->work_buffer + vdb_shared->work_buffer_used) = x;
-        vdb_shared->work_buffer_used += sizeof(float);
-        return 1;
-    }
-    return 0;
-}
+uint8_t  *vdb_push_u08(uint8_t x)  { _vdb_push_type(x, uint8_t);  }
+uint32_t *vdb_push_u32(uint32_t x) { _vdb_push_type(x, uint32_t); }
+float    *vdb_push_r32(float x)    { _vdb_push_type(x, float);    }
 
 int vdb_begin()
 {

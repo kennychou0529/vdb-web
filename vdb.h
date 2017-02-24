@@ -12,20 +12,12 @@ int vdb_set_listen_port(int port);
 int vdb_begin();
 void vdb_end();
 
-void vdb_color1i(int c);
-void vdb_color1f(float c);
-void vdb_point2(float x, float y);
-void vdb_point3(float x, float y, float z);
-void vdb_line2(float x1, float y1, float x2, float y2);
-void vdb_line3(float x1, float y1, float z1, float x2, float y2, float z2);
-void vdb_rect(float x, float y, float w, float h);
-
 // You probably don't want to mess with this, but if you do,
-// these push data to the buffer that is sent on each vdb_end.
-// You can use these in conjunction with your own parser at the
-// browser-side to implement custom rendering.
+// this pushes data to the buffer that is sent on each vdb_end.
+// You can use this in conjunction with your own parser at the
+// browser-side to implement custom rendering. See app.js for
+// an example parser, and the any of the vdb_point/line/...
+// for an example render command.
 void *vdb_push_bytes(const void *data, int count);
-
-void vdb_sleep(int milliseconds); // @ Removeme
 
 #endif
