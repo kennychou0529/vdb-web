@@ -28,10 +28,20 @@
 #include "tcp.c"
 #include "websocket.c"
 
+// Draw commands are stored in a work buffer that is allocated
+// once on the first vdb_begin call, and stays a fixed size that
+// is given below in number-of-bytes. If you are memory constrained,
+// or if you need more memory than allocated by default, you can
+// define your own work buffer size before #including vdb.
 #ifndef VDB_WORK_BUFFER_SIZE
 #define VDB_WORK_BUFFER_SIZE (32*1024*1024)
 #endif
 
+// Messages received from the browser are stored in a buffer that
+// is allocated once on the first vdb_begin call, and stays a fixed
+// size is given below in number-of-bytes. If you are sending large
+// messages from the browser back to the application you can define
+// your own recv buffer size before #including vdb.
 #ifndef VDB_RECV_BUFFER_SIZE
 #define VDB_RECV_BUFFER_SIZE (1024*1024)
 #endif
@@ -337,6 +347,8 @@ uint8_t  *vdb_push_u08(uint8_t x)  { _vdb_push_type(x, uint8_t);  }
 uint32_t *vdb_push_u32(uint32_t x) { _vdb_push_type(x, uint32_t); }
 float    *vdb_push_r32(float x)    { _vdb_push_type(x, float);    }
 
+void vdb_init_drawstate();
+
 int vdb_begin()
 {
     if (vdb_listen_port < 1024 || vdb_listen_port > 65535)
@@ -391,6 +403,7 @@ int vdb_begin()
         return 0;
     }
     vdb_shared->work_buffer_used = 0;
+    vdb_init_drawstate();
     return 1;
 }
 
@@ -440,11 +453,13 @@ int vdb_loop(int fps)
 // Public API implementation
 
 static unsigned char vdb_current_color = 0;
+static unsigned char vdb_current_alpha = 0;
+
 static unsigned char vdb_mode_point2 = 1;
 static unsigned char vdb_mode_point3 = 2;
 static unsigned char vdb_mode_line2 = 3;
 static unsigned char vdb_mode_line3 = 4;
-static unsigned char vdb_mode_rect = 5;
+static unsigned char vdb_mode_fill_rect = 5;
 static unsigned char vdb_mode_circle = 6;
 static unsigned char vdb_mode_image_rgb8 = 7;
 static unsigned char vdb_mode_aspect = 255;
@@ -456,19 +471,31 @@ static float vdb_yrange_top = +1.0f;
 static float vdb_zrange_far = -1.0f;
 static float vdb_zrange_near = +1.0f;
 
-void vdb_color1i(int c)
+void vdb_init_drawstate()
 {
-    if (c < 0) c = 0;
-    if (c > 255) c = 255;
-    vdb_current_color = (unsigned char)(c);
+    vdb_current_color = 0;
+    vdb_current_alpha = 0;
+    vdb_xrange_left = -1.0f;
+    vdb_xrange_right = +1.0f;
+    vdb_yrange_bottom = -1.0f;
+    vdb_yrange_top = +1.0f;
+    vdb_zrange_far = -1.0f;
+    vdb_zrange_near = +1.0f;
 }
 
-void vdb_color1f(float c)
+void vdb_translucent() { vdb_current_alpha = 1; }
+void vdb_opaque()      { vdb_current_alpha = 0; }
+
+void vdb_color(int c)
 {
-    int ci = (int)(c*255.0f);
-    if (ci < 0) ci = 0;
-    if (ci > 255) ci = 255;
-    vdb_current_color = (unsigned char)(ci);
+    if (c < 0)  vdb_current_color = 0;
+    if (c > 127) vdb_current_color = 127;
+    else        vdb_current_color = (unsigned char)c;
+}
+
+void vdb_colorf(float cf)
+{
+    vdb_color((int)(cf*127.0f));
 }
 
 void vdb_xrange(float left, float right)
@@ -504,6 +531,11 @@ void vdb_push_z(float z)
     vdb_push_r32(+1.0f - 2.0f*(z-vdb_zrange_near)/(vdb_zrange_far-vdb_zrange_near));
 }
 
+void vdb_push_style()
+{
+    vdb_push_u08(vdb_current_color | (vdb_current_alpha << 7));
+}
+
 void vdb_aspect(float w, float h)
 {
     vdb_push_u08(vdb_mode_aspect);
@@ -515,7 +547,7 @@ void vdb_aspect(float w, float h)
 void vdb_point(float x, float y)
 {
     vdb_push_u08(vdb_mode_point2);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_x(x);
     vdb_push_y(y);
 }
@@ -523,7 +555,7 @@ void vdb_point(float x, float y)
 void vdb_point3d(float x, float y, float z)
 {
     vdb_push_u08(vdb_mode_point3);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_x(x);
     vdb_push_y(y);
     vdb_push_z(z);
@@ -532,7 +564,7 @@ void vdb_point3d(float x, float y, float z)
 void vdb_line(float x1, float y1, float x2, float y2)
 {
     vdb_push_u08(vdb_mode_line2);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_x(x1);
     vdb_push_y(y1);
     vdb_push_x(x2);
@@ -542,7 +574,7 @@ void vdb_line(float x1, float y1, float x2, float y2)
 void vdb_line3d(float x1, float y1, float z1, float x2, float y2, float z2)
 {
     vdb_push_u08(vdb_mode_line3);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_x(x1);
     vdb_push_y(y1);
     vdb_push_z(z1);
@@ -551,10 +583,10 @@ void vdb_line3d(float x1, float y1, float z1, float x2, float y2, float z2)
     vdb_push_z(z2);
 }
 
-void vdb_rect(float x, float y, float w, float h)
+void vdb_fillRect(float x, float y, float w, float h)
 {
-    vdb_push_u08(vdb_mode_rect);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_u08(vdb_mode_fill_rect);
+    vdb_push_style();
     vdb_push_x(x);
     vdb_push_y(y);
     vdb_push_r32(w);
@@ -564,16 +596,16 @@ void vdb_rect(float x, float y, float w, float h)
 void vdb_circle(float x, float y, float r)
 {
     vdb_push_u08(vdb_mode_circle);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_x(x);
     vdb_push_y(y);
     vdb_push_r32(r);
 }
 
-void vdb_image_rgb8(const void *data, int w, int h)
+void vdb_imageRGB8(const void *data, int w, int h)
 {
     vdb_push_u08(vdb_mode_image_rgb8);
-    vdb_push_u08(vdb_current_color);
+    vdb_push_style();
     vdb_push_u32(w);
     vdb_push_u32(h);
     vdb_push_bytes(data, w*h*3);

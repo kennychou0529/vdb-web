@@ -9,6 +9,7 @@
 // function before the first vdb_begin, or writing #define VDB_LISTEN_PORT port
 // before #including the implementation.
 int vdb_set_listen_port(int port);
+
 int vdb_begin();
 void vdb_end();
 

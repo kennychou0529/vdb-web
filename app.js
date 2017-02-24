@@ -49,6 +49,12 @@ function colorPalette(color)
     return palettes[palette_index][color % (palettes[palette_index].length)];
 }
 
+function alphaPalette(alpha)
+{
+    if (alpha == 0) return 255;
+    if (alpha == 1) return 128;
+}
+
 function generateTriangles(commands)
 {
     tex_view0_active = false;
@@ -64,13 +70,15 @@ function generateTriangles(commands)
     while (offset < view.byteLength)
     {
         var mode = view.getUint8(offset, little_endian); offset += 1;
-        var color_index = view.getUint8(offset, little_endian); offset += 1;
+        var style = view.getUint8(offset, little_endian); offset += 1;
 
-        var color = colorPalette(color_index);
+        var style_color_index = style & 0x7F;
+        var style_alpha_index = (style >> 7) & 0x01;
+        var color = colorPalette(style_color_index);
         var color_r = (color >> 24) & 0xFF;
         var color_g = (color >> 16) & 0xFF;
         var color_b = (color >>  8) & 0xFF;
-        var color_a = (color >>  0) & 0xFF;
+        var color_a = alphaPalette(style_alpha_index) & 0xFF;
 
         if (mode == 1) // point2
         {
@@ -145,12 +153,20 @@ function generateTriangles(commands)
             var y2_ndc = view.getFloat32(offset, little_endian); offset += 4;
             var z2_ndc = view.getFloat32(offset, little_endian); offset += 4;
         }
-        else if (mode == 5) // rect
+        else if (mode == 5) // fillRect
         {
-            var x_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            var y_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            var w_ndc = view.getFloat32(offset, little_endian); offset += 4;
-            var h_ndc = view.getFloat32(offset, little_endian); offset += 4;
+            var x = view.getFloat32(offset, little_endian); offset += 4;
+            var y = view.getFloat32(offset, little_endian); offset += 4;
+            var w = view.getFloat32(offset, little_endian); offset += 4;
+            var h = view.getFloat32(offset, little_endian); offset += 4;
+            coords.push(x,y, x+w,y, x+w,y+h, x+w,y+h, x,y+h, x,y);
+            colors.push(color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a,
+                        color_r,color_g,color_b,color_a);
+            count += 6;
         }
         else if (mode == 6) // circle
         {
@@ -334,7 +350,7 @@ function draw()
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.clearColor(1, 1, 1, 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(program);
 
