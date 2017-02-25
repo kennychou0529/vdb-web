@@ -21,4 +21,4 @@ void vdb_end();
 // for an example render command.
 void *vdb_push_bytes(const void *data, int count);
 
-#endif
+#endif // VDB_HEADER_INCLUDE

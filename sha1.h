@@ -100,7 +100,7 @@ void mbedtls_sha1_process( mbedtls_sha1_context *ctx, const unsigned char data[6
 #endif
 
 #else  /* MBEDTLS_SHA1_ALT */
-#include "sha1_alt.h"
+// #include "sha1_alt.h"
 #endif /* MBEDTLS_SHA1_ALT */
 
 #ifdef __cplusplus
