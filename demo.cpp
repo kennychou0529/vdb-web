@@ -60,8 +60,8 @@ void draw_cool_spinny_thing(float dt)
         vdb_color(6);
         vdb_line(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
 
-        vdb_color(2); vdb_point(r1*cosf(a1), r1*sinf(a1));
-        vdb_color(8); vdb_point(r2*cosf(a2), r2*sinf(a2));
+        vdb_color(8); vdb_point(r1*cosf(a1), r1*sinf(a1));
+        vdb_color(6); vdb_point(r2*cosf(a2), r2*sinf(a2));
         vdb_color(6); vdb_point(r3*cosf(a3), r3*sinf(a3));
     }
 
