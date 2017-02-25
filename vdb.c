@@ -214,12 +214,17 @@ int vdb_recv_thread()
             vdb_log("Generating handshake\n");
             if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
             {
+                #ifdef VDB_AMALGAMATED
+                const char *content = vdb_static_content;
+                #else
+                char data[1024];
+                const char *content = "<html>In the future I'll also send the vdb application to you over the browser.<br>For now, you need to open the app.html file in your browser.</html>";
+                #endif
+
                 // If we failed to generate a handshake, it means that either
                 // we did something wrong, or the browser did something wrong,
                 // or the request was an ordinary HTTP request. If the latter
                 // we'll send an HTTP response containing the vdb.html page.
-                char data[1024];
-                const char *content = "<html>In the future I'll also send the vdb application to you over the browser.<br>For now, you need to open the app.html file in your browser.</html>";
                 int len = sprintf(data,
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Length: %d\r\n"
