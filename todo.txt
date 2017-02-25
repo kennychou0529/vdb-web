@@ -8,7 +8,6 @@ o live fisheye calibration
 o v4l2/ffmpeg camera input
 
 vdb:
-o vdb_alpha: Four alpha values (2 bits of color)?
 o _beginthread and _endthread instead of CreateThread
 o NOMINMAX
 o #undef near/far

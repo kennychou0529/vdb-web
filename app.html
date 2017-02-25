@@ -103,10 +103,20 @@ var tex_view0_height = 0;
 var line_width = 4.0;   // in pixels
 var point_radius = 4.0; // in pixels
 
+function rgbToHex(rf, gf, bf)
+{
+    var r = Math.floor(rf*255.0);
+    var g = Math.floor(gf*255.0);
+    var b = Math.floor(bf*255.0);
+    return (r << 24) | (g << 16) | (b << 8) | 0xFF;
+}
+
 var palette_index = 0;
 function colorPalette(color)
 {
     var palettes = [
+        // Derp
+        [rgbToHex(0.40, 0.76, 0.64), rgbToHex(0.99, 0.55, 0.38), rgbToHex(0.54, 0.63, 0.82), rgbToHex(0.91, 0.54, 0.77), rgbToHex(0.64, 0.86, 0.29), rgbToHex(1.00, 0.85, 0.19), rgbToHex(0.89, 0.77, 0.58), rgbToHex(0.70, 0.70, 0.70)],
         // Spectral
         [0x9E0142FF,0xD53E4FFF,0xF46D43FF,0xFDAE61FF,0xFEE08BFF,0xFFFFBFFF,0xE6F598FF,0xABDDA4FF,0x66C2A5FF,0x3288BDFF,0x5E4FA2FF],
         // BrownBlueGreen
@@ -227,11 +237,11 @@ function generateTriangles(commands)
         }
         else if (mode == 5) // fillRect
         {
-            var x = view.getFloat32(offset, little_endian); offset += 4;
-            var y = view.getFloat32(offset, little_endian); offset += 4;
-            var w = view.getFloat32(offset, little_endian); offset += 4;
-            var h = view.getFloat32(offset, little_endian); offset += 4;
-            coords.push(x,y, x+w,y, x+w,y+h, x+w,y+h, x,y+h, x,y);
+            var x1 = view.getFloat32(offset, little_endian); offset += 4;
+            var y1 = view.getFloat32(offset, little_endian); offset += 4;
+            var x2 = view.getFloat32(offset, little_endian); offset += 4;
+            var y2 = view.getFloat32(offset, little_endian); offset += 4;
+            coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
             colors.push(color_r,color_g,color_b,color_a,
                         color_r,color_g,color_b,color_a,
                         color_r,color_g,color_b,color_a,
