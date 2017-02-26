@@ -87,6 +87,23 @@ int main()
 
     while (vdb_loop(30))
     {
+        vdb_xrange(0, 32);
+        vdb_yrange(-1.0f, +1.0f);
+        for (int i = 0; i < 32; i++)
+        {
+            // vdb_color_black();
+            // vdb_color_white();
+            // vdb_color_red();
+            // vdb_color_green();
+            // vdb_color_blue();
+            // vdb_color_ramp(i/32.0f);
+            vdb_color(i);
+            vdb_line(i+0.5f, -1.0f, i+0.5f, +1.0f);
+        }
+    }
+
+    while (vdb_loop(30))
+    {
         static float t = 0.0f;
         t += 1.0f/30.0f;
         vdb_aspect((float)width, (float)height);
