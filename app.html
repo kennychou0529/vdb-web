@@ -20,23 +20,25 @@ body {
     margin-right: auto;
     margin-top: 12px;
     margin-bottom: 12px;
-    width: 600px;
-    height: 300px;
+    width: 640px;
+    height: 320px;
 }
 
 #container {
-    width: 640;
-    height: 480;
+    width: 640px;
+    height: 480px;
     display: block;
     margin: auto;
 }
 
-#status, #fps {
-    margin-top: 6px;
-    text-align: center;
-}
+#status { display: inline; color: #888; }
+#fps { margin-top: 0; color: #888; }
 
-a { color: #fff; background: #bb5544; padding: 6px; box-shadow: 0px 2px 2px #a7a7a7; border-radius: 2px; text-decoration: none; }
+/*label { margin-left: 8px; vertical-align: middle; }*/
+input { width: 100px; vertical-align: middle; padding: 0; margin: 0; }
+.input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 320px; padding: 6px; margin-bottom: 8px; }
+
+a { background: #bb5544; vertical-align: middle; padding: 2px 4px 2px 4px; border-radius: 2px; color: #fff; text-decoration: none; }
 a:hover { background: #cc6655;}
 a:active { background: #dd7766; }
 </style>
@@ -99,9 +101,11 @@ var tex_view0_active = false;
 var tex_view0_width = 0;
 var tex_view0_height = 0;
 
-// Geometry style configuration
+// User interface
 var line_width = 4.0;   // in pixels
 var point_radius = 4.0; // in pixels
+var nice_points = false;
+var connection_address = "localhost:8000";
 
 function rgbToHex(rf, gf, bf)
 {
@@ -170,24 +174,41 @@ function generateTriangles(commands)
 
             var rx = point_radius/(cvs.width/2.0);
             var ry = point_radius/(cvs.height/2.0);
-            var n = 32;
-            var wh = cvs.width/2.0;
-            var hh = cvs.height/2.0;
-            for (var i = 0; i < n; i++)
+
+            if (nice_points)
             {
-                var t1 = 2.0*3.1415926*i/n;
-                var t2 = 2.0*3.1415926*(i+1)/n;
-                var x1 = x;
-                var y1 = y;
-                var x2 = x1 + rx*Math.cos(t1);
-                var y2 = y1 + ry*Math.sin(t1);
-                var x3 = x1 + rx*Math.cos(t2);
-                var y3 = y1 + ry*Math.sin(t2);
-                coords.push(x1,y1, x2,y2, x3,y3);
+                var n = 32;
+                for (var i = 0; i < n; i++)
+                {
+                    var t1 = 2.0*3.1415926*i/n;
+                    var t2 = 2.0*3.1415926*(i+1)/n;
+                    var x1 = x;
+                    var y1 = y;
+                    var x2 = x1 + rx*Math.cos(t1);
+                    var y2 = y1 + ry*Math.sin(t1);
+                    var x3 = x1 + rx*Math.cos(t2);
+                    var y3 = y1 + ry*Math.sin(t2);
+                    coords.push(x1,y1, x2,y2, x3,y3);
+                    colors.push(color_r,color_g,color_b,color_a,
+                                color_r,color_g,color_b,color_a,
+                                color_r,color_g,color_b,color_a);
+                    count += 3;
+                }
+            }
+            else
+            {
+                var x1 = x-rx;
+                var x2 = x+rx;
+                var y1 = y-ry;
+                var y2 = y+ry;
+                coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
                 colors.push(color_r,color_g,color_b,color_a,
                             color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a,
+                            color_r,color_g,color_b,color_a,
                             color_r,color_g,color_b,color_a);
-                count += 3;
+                count += 6;
             }
         }
         else if (mode == 2) // point3
@@ -475,20 +496,32 @@ function draw()
     }
 }
 
-var fuck = 0;
+var connect_called = false;
 
 function connect()
 {
+    if (connect_called)
+        return;
+
+    connect_called = true;
+
+    connection_address = document.getElementById("connection_address").value;
+    document.getElementById("connection_address").hidden = true;
+    document.getElementById("button_connect").hidden = true;
+    document.getElementById("status").hidden = false;
+
     setInterval(function()
     {
         if (!ws)
         {
-            // console.log("Retry!");
-            ws = new WebSocket("ws://localhost:8000");
+            document.getElementById("status").innerHTML = "Connecting to " + connection_address + "...";
+
+            ws = new WebSocket("ws://" + connection_address);
             ws.binaryType = 'arraybuffer';
 
             ws.onopen = function()
             {
+                document.getElementById("status").innerHTML = "Connected to " + connection_address;
                 // console.log("Sending data");
                 ws.send("Hello from browser!");
                 has_connection = true;
@@ -503,6 +536,16 @@ function connect()
 
             ws.onmessage = function(e)
             {
+                stats_bps_sum += e.data.byteLength;
+                if (stats_bps_dt > 1.0)
+                {
+                    stats_bps = stats_bps_sum / stats_bps_dt;
+                    stats_bps_sum = 0.0;
+                    stats_bps_dt = 0.0;
+                }
+                var mbps = (10.0*stats_bps/(1024.0*1024.0)).toPrecision(2);
+
+                document.getElementById("status").innerHTML = "Connected to " + connection_address + " (" + mbps + " mbps)";
                 cmd_data = e.data;
             }
         }
@@ -511,6 +554,9 @@ function connect()
 
 var animation_frame_t_first = null;
 var animation_frame_t_prev = null;
+var stats_bps_sum = 0;
+var stats_bps_dt = 0;
+var stats_bps = 0;
 function anim(t)
 {
     var delta = 1.0/60.0;
@@ -527,26 +573,25 @@ function anim(t)
     var status = document.getElementById("status");
     if (has_connection)
     {
-        status.innerHTML = "Connected";
+        stats_bps_dt += delta;
         draw();
     }
     else
     {
-        status.innerHTML = "No connection";
         draw();
     }
 
-    var p_fps = document.getElementById("fps");
-    p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
+    // var p_fps = document.getElementById("fps");
+    // p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     requestAnimationFrame(anim);
 }
 
-function onKeyUp(e)
-{
-    if (event.keyCode == 13)
-        ws.send("c");
-}
+// function onKeyUp(e)
+// {
+//     if (event.keyCode == 13)
+//         ws.send("c");
+// }
 
 function load()
 {
@@ -565,14 +610,22 @@ function load()
         return;
     }
 
-    document.onkeyup = onKeyUp;
+    // document.onkeyup = onKeyUp;
 
-    connect();
+    document.getElementById("connection_address").value = connection_address;
+    document.getElementById("status").hidden = true;
+
+    // connect();
     init();
     anim();
 }
 
-function sendContinue()
+function buttonConnect()
+{
+    connect();
+}
+
+function buttonContinue()
 {
     ws.send("c");
 }
@@ -583,9 +636,9 @@ function sendContinue()
 </head>
 <body onload="load()">
     <div id="container">
-        <p id="status"></p>
-        <p id="fps"></p>
+        <!-- <p id="status"></p> -->
         <canvas id="canvas"></canvas>
+        <!-- <p id="fps" style="float:right;"></p> -->
 
         <!-- <label for="select_viewport">Viewport</label>
         <select onchange="onchange_select_viewport()" id="select_viewport" name="select_viewport">
@@ -601,15 +654,35 @@ function sendContinue()
           <option value="3">GreenBlue</option>
           <option value="4">Set 1</option>
         </select> -->
+        <a style="float:right;" href="javascript:buttonContinue()">Continue</a>
 
-        <!-- <label>Line size</label> -->
-        <input id="line_width" min="1.0" max="32.0" value="2.0" type="range"/>
-        <!-- <label>Point size</label> -->
-        <input id="point_radius" min="1.0" max="32.0" value="4.0" type="range"/>
-        <!-- <label>Alpha</label> -->
-        <input id="alpha_value" min="0.0" max="255.0" value="120" type="range"/>
+        <div id="config">
+            <div class="input_thing">
+                <input id="connection_address" type="text"/>
+                <a id="button_connect" href="javascript:buttonConnect()">Connect</a>
+                <p id="status"></p>
+            </div>
 
-        <a class="button" style="float:right;" href="javascript:sendContinue()">Continue</a>
+            <div class="input_thing">
+                <input id="line_width" min="1.0" max="32.0" value="2.0" type="range"/>
+                <label>Line size</label>
+            </div>
+
+            <div class="input_thing">
+                <input id="point_radius" min="1.0" max="32.0" value="4.0" type="range"/>
+                <label>Point size</label>
+            </div>
+
+            <div class="input_thing">
+                <input id="alpha_value" min="0.0" max="255.0" value="120" type="range"/>
+                <label>Alpha</label>
+            </div>
+
+            <div class="input_thing">
+                <input id="nice_points" type="checkbox"/>
+                <label>Nice points</label>
+            </div>
+        </div>
     </div>
 </body>
 </html>
