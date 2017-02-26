@@ -493,14 +493,17 @@ void vdb_opaque()      { vdb_current_alpha = 0; }
 
 void vdb_color(int c)
 {
-    if (c < 0)  vdb_current_color = 0;
-    if (c > 127) vdb_current_color = 127;
-    else        vdb_current_color = (unsigned char)c;
+    // wrap around interval
+    vdb_current_color = (unsigned char)(c % 127);
 }
 
 void vdb_colorf(float cf)
 {
-    vdb_color((int)(cf*127.0f));
+    // clamp to edge
+    int c = (int)(cf*127.0f);
+    if (c < 0) c = 0;
+    if (c > 127) c = 127;
+    vdb_color(c);
 }
 
 void vdb_xrange(float left, float right)
