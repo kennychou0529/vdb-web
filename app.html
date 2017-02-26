@@ -35,7 +35,7 @@ body {
 #status { display: inline; color: #888; }
 #fps { display: inline; color: #888; }
 
-/*label { margin-left: 8px; vertical-align: middle; }*/
+.input_thing select { width: 100px; }
 input { width: 100px; vertical-align: middle; padding: 0; margin: 0; }
 .input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 280px; padding: 6px; margin-bottom: 8px; }
 
@@ -129,7 +129,7 @@ function colorPalette(color)
 {
     var palettes = [
         // Bright
-        [0x66c1a3ff, 0xfc8c60ff, 0x89a0d1ff, 0xe889c4ff, 0xa3db49ff, 0xffd830ff, 0xe2c493ff, 0xb2b2b2ff];
+        [0x66c1a3ff, 0xfc8c60ff, 0x89a0d1ff, 0xe889c4ff, 0xa3db49ff, 0xffd830ff, 0xe2c493ff, 0xb2b2b2ff],
         // Spectral
         [0x9E0142FF,0xD53E4FFF,0xF46D43FF,0xFDAE61FF,0xFEE08BFF,0xFFFFBFFF,0xE6F598FF,0xABDDA4FF,0x66C2A5FF,0x3288BDFF,0x5E4FA2FF],
         // BrownBlueGreen
@@ -465,6 +465,9 @@ function draw()
     point_radius = parseFloat(document.getElementById("point_radius").value);
     alpha_value = parseFloat(document.getElementById("alpha_value").value);
     nice_points = document.getElementById("nice_points").checked;
+    {
+        palette_index = document.getElementById("color_palette").selectedIndex;
+    }
 
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
@@ -643,8 +646,6 @@ function load()
         return;
     }
 
-    // document.onkeyup = onKeyUp;
-
     document.getElementById("connection_address").value = connection_address;
     document.getElementById("status").hidden = true;
 
@@ -675,24 +676,7 @@ function buttonContinue()
 </head>
 <body onload="load()">
     <div id="container">
-        <!-- <p id="status"></p> -->
         <canvas id="canvas"></canvas>
-        <!-- <p id="fps" style="float:right;"></p> -->
-
-        <!-- <label for="select_viewport">Viewport</label>
-        <select onchange="onchange_select_viewport()" id="select_viewport" name="select_viewport">
-          <option value="letterbox">Letterbox</option>
-          <option value="stretch">Stretch to fit</option>
-        </select> -->
-
-        <!-- <label for="color_palette">Colors</label>
-        <select id="color_palette" name="color_palette">
-          <option value="0">Spectral</option>
-          <option value="1">BrownBlueGreen</option>
-          <option value="2">Blue</option>
-          <option value="3">GreenBlue</option>
-          <option value="4">Set 1</option>
-        </select> -->
 
         <div id="user_config">
             <div class="input_thing">
@@ -712,6 +696,18 @@ function buttonContinue()
                 <input id="connection_address" type="text"/>
                 <a id="button_connect" href="javascript:buttonConnect()">Connect</a>
                 <p id="status"></p>
+            </div>
+
+            <div class="input_thing">
+                <select id="color_palette">
+                  <option value="0">Bright</option>
+                  <option value="1">Spectral</option>
+                  <option value="2">BrownBlueGreen</option>
+                  <option value="3">Blue</option>
+                  <option value="4">GreenBlue</option>
+                  <option value="5">Set 1</option>
+                </select>
+                <label>Color palette</label>
             </div>
 
             <div class="input_thing">
