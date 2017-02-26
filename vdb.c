@@ -466,6 +466,7 @@ static unsigned char vdb_mode_line3 = 4;
 static unsigned char vdb_mode_fill_rect = 5;
 static unsigned char vdb_mode_circle = 6;
 static unsigned char vdb_mode_image_rgb8 = 7;
+static unsigned char vdb_mode_slider_float = 254;
 static unsigned char vdb_mode_aspect = 255;
 
 static float vdb_xrange_left = -1.0f;
@@ -602,4 +603,16 @@ void vdb_imageRGB8(const void *data, int w, int h)
     vdb_push_u32(w);
     vdb_push_u32(h);
     vdb_push_bytes(data, w*h*3);
+}
+
+void vdb_slider1f(float *x, float min_value, float max_value)
+{
+    uint64_t addr = (uint64_t)x;
+    vdb_push_u08(vdb_mode_slider_float);
+    vdb_push_style();
+    vdb_push_u32(addr & 0xFFFFFFFF); // low-bits
+    vdb_push_u32((addr >> 32) & 0xFFFFFFFF); // high-bits
+    vdb_push_r32(*x);
+    vdb_push_r32(min_value);
+    vdb_push_r32(max_value);
 }

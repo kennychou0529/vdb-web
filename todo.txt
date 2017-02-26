@@ -8,6 +8,8 @@ o live fisheye calibration
 o v4l2/ffmpeg camera input
 
 vdb:
+o collect messages and go through in vdb_begin
+    variable modification must occur from main thread/pid!!!
 o _beginthread and _endthread instead of CreateThread
 o NOMINMAX
 o #undef near/far

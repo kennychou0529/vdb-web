@@ -31,12 +31,13 @@ body {
     margin: auto;
 }
 
+#user_config { float: right; }
 #status { display: inline; color: #888; }
-#fps { margin-top: 0; color: #888; }
+#fps { display: inline; color: #888; }
 
 /*label { margin-left: 8px; vertical-align: middle; }*/
 input { width: 100px; vertical-align: middle; padding: 0; margin: 0; }
-.input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 320px; padding: 6px; margin-bottom: 8px; }
+.input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 280px; padding: 6px; margin-bottom: 8px; }
 
 a { background: #bb5544; vertical-align: middle; padding: 2px 4px 2px 4px; border-radius: 2px; color: #fff; text-decoration: none; }
 a:hover { background: #cc6655;}
@@ -106,6 +107,14 @@ var line_width = 4.0;   // in pixels
 var point_radius = 4.0; // in pixels
 var nice_points = false;
 var connection_address = "localhost:8000";
+
+// Variable modifiers
+var mod1f_registered = false;
+var mod1f_lobits = null;
+var mod1f_hibits = null;
+var mod1f_min_value = 0.0;
+var mod1f_max_value = 1.0;
+var mod1f_value = 0.0;
 
 function rgbToHex(rf, gf, bf)
 {
@@ -331,6 +340,23 @@ function generateTriangles(commands)
             tex_view0_active = true;
             data = null;
         }
+        else if (mode == 254) // slider float
+        {
+            if (!mod1f_registered)
+            {
+                mod1f_registered = true;
+                mod1f_lobits = view.getUint32(offset, little_endian); offset += 4;
+                mod1f_hibits = view.getUint32(offset, little_endian); offset += 4;
+                mod1f_value = view.getFloat32(offset, little_endian); offset += 4;
+                mod1f_min_value = view.getFloat32(offset, little_endian); offset += 4;
+                mod1f_max_value = view.getFloat32(offset, little_endian); offset += 4;
+                document.getElementById("mod1f_range").min = mod1f_min_value;
+                document.getElementById("mod1f_range").max = mod1f_max_value;
+                document.getElementById("mod1f_range").value = mod1f_value;
+                document.getElementById("mod1f_label_name").innerHTML = "x: ";
+                document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
+            }
+        }
         else if (mode == 255) // aspect
         {
             var w = view.getFloat32(offset, little_endian); offset += 4;
@@ -438,6 +464,7 @@ function draw()
     line_width = parseFloat(document.getElementById("line_width").value);
     point_radius = parseFloat(document.getElementById("point_radius").value);
     alpha_value = parseFloat(document.getElementById("alpha_value").value);
+    nice_points = document.getElementById("nice_points").checked;
 
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
@@ -522,14 +549,15 @@ function connect()
             ws.onopen = function()
             {
                 document.getElementById("status").innerHTML = "Connected to " + connection_address;
-                // console.log("Sending data");
                 ws.send("Hello from browser!");
                 has_connection = true;
             }
 
             ws.onclose = function()
             {
-                // console.log("Socket closed");
+                mod1f_registered = false;
+                tex_view0_active = false;
+                cmd_data = null;
                 ws = null;
                 has_connection = false;
             }
@@ -575,14 +603,19 @@ function anim(t)
     {
         stats_bps_dt += delta;
         draw();
+
+        if (mod1f_registered)
+        {
+            ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
+        }
     }
     else
     {
         draw();
     }
 
-    // var p_fps = document.getElementById("fps");
-    // p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
+    var p_fps = document.getElementById("fps");
+    p_fps.innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     requestAnimationFrame(anim);
 }
@@ -620,6 +653,12 @@ function load()
     anim();
 }
 
+function mod1f_onchange(e)
+{
+    mod1f_value = parseFloat(e.value);
+    document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
+}
+
 function buttonConnect()
 {
     connect();
@@ -654,7 +693,19 @@ function buttonContinue()
           <option value="3">GreenBlue</option>
           <option value="4">Set 1</option>
         </select> -->
-        <a style="float:right;" href="javascript:buttonContinue()">Continue</a>
+
+        <div id="user_config">
+            <div class="input_thing">
+                <a href="javascript:buttonContinue()">Continue</a>
+                <p id="fps"></p>
+            </div>
+
+            <div class="input_thing">
+                <label id="mod1f_label_name"></label>
+                <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
+                <label id="mod1f_label_value"></label>
+            </div>
+        </div>
 
         <div id="config">
             <div class="input_thing">
