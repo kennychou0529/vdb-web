@@ -245,7 +245,7 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
-function generateTriangles(commands)
+function parseCommands(commands)
 {
     tex_view0_active = false;
 
@@ -363,105 +363,19 @@ function generateTriangles(commands)
                 document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
             }
         }
-        else if (mode == 255) // aspect
-        {
-            var w = view.getFloat32(offset, little_endian); offset += 4;
-            var h = view.getFloat32(offset, little_endian); offset += 4;
-            var new_w = cvs.clientHeight * w / h;
-
-            var element = document.getElementById("canvas");
-            element.style.width = new_w + "px";
-        }
     }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_coord);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.DYNAMIC_DRAW);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
-    gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.DYNAMIC_DRAW);
 
     coords = null;
     colors = null;
     view = null;
 
     return count;
-}
-
-function createShader(gl, type, source)
-{
-    var shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-    if (success)
-        return shader;
-    console.log(gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-}
-
-function createProgram(gl, vs, fs)
-{
-    var program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
-    if (success)
-        return program;
-    console.log(gl.getProgramInfoLog(program));
-    gl.deleteProgram(program);
-}
-
-function init()
-{
-    // Compile the ubershader
-    var shader_vs_src = document.getElementById("shader_vs").text;
-    var shader_fs_src = document.getElementById("shader_fs").text;
-    var shader_vs = createShader(gl, gl.VERTEX_SHADER, shader_vs_src);
-    var shader_fs = createShader(gl, gl.FRAGMENT_SHADER, shader_fs_src);
-    program = createProgram(gl, shader_vs, shader_fs);
-
-    // Get attribute locations
-    loc_coord = gl.getAttribLocation(program, "coord");
-    loc_color = gl.getAttribLocation(program, "color");
-    loc_texel = gl.getAttribLocation(program, "texel");
-    loc_chan0 = gl.getUniformLocation(program, "chan0");
-
-    // These vertex buffers are updated in generateTriangles
-    vbo_user_coord = gl.createBuffer();
-    vbo_user_color = gl.createBuffer();
-    vbo_user_texel = gl.createBuffer();
-
-    // These vertex buffers are used to draw background textures
-    vbo_quad_coord = gl.createBuffer();
-    vbo_quad_color = gl.createBuffer();
-    vbo_quad_texel = gl.createBuffer();
-    {
-        var coords = [ -1,-1, +1,-1, +1,+1, +1,+1, -1,+1, -1,-1 ];
-        var texels = [ 0,0, 1,0, 1,1, 1,1, 0,1, 0,0 ];
-        var colors = [ 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255 ];
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_coord); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_color); gl.bufferData(gl.ARRAY_BUFFER, new   Uint8Array(colors), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_texel); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texels), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-
-    // This texture is for drawing non-textured geometry
-    tex_white = gl.createTexture();
-    {
-        var data = new Uint8Array([255,255,255,255]);
-        gl.bindTexture(gl.TEXTURE_2D, tex_white);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-    }
-
-    // These textures can be assigned data by the user (from generateTriangles)
-    tex_view0 = gl.createTexture();
-    tex_view0_active = false;
 }
 
 function draw()
@@ -481,14 +395,14 @@ function draw()
 
     var num_elements = 0;
     if (cmd_data != null)
-        num_elements = generateTriangles(cmd_data);
+        num_elements = parseCommands(cmd_data);
 
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.clearColor(0, 0, 0, 0);
+    gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(program);
 
@@ -527,6 +441,18 @@ function draw()
         gl.drawArrays(gl.TRIANGLES, 0, num_elements);
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
+}
+
+function draw_idle()
+{
+    if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
+    {
+        cvs.width  = cvs.clientWidth;
+        cvs.height = cvs.clientHeight;
+    }
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
 var connect_called = false;
@@ -606,7 +532,6 @@ function anim(t)
 
     if (has_connection)
     {
-        document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
         stats_bps_dt += delta;
         draw();
 
@@ -615,11 +540,94 @@ function anim(t)
             ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
         }
     }
+    else
+    {
+        draw_idle();
+    }
+
+    document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     requestAnimationFrame(anim);
 }
 
-function load()
+function createShader(gl, type, source)
+{
+    var shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    if (success)
+        return shader;
+    console.log(gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+}
+
+function createProgram(gl, vs, fs)
+{
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+    if (success)
+        return program;
+    console.log(gl.getProgramInfoLog(program));
+    gl.deleteProgram(program);
+}
+
+function init()
+{
+    // Compile the ubershader
+    var shader_vs_src = document.getElementById("shader_vs").text;
+    var shader_fs_src = document.getElementById("shader_fs").text;
+    var shader_vs = createShader(gl, gl.VERTEX_SHADER, shader_vs_src);
+    var shader_fs = createShader(gl, gl.FRAGMENT_SHADER, shader_fs_src);
+    program = createProgram(gl, shader_vs, shader_fs);
+
+    // Get attribute locations
+    loc_coord = gl.getAttribLocation(program, "coord");
+    loc_color = gl.getAttribLocation(program, "color");
+    loc_texel = gl.getAttribLocation(program, "texel");
+    loc_chan0 = gl.getUniformLocation(program, "chan0");
+
+    // These vertex buffers are updated in generateTriangles
+    vbo_user_coord = gl.createBuffer();
+    vbo_user_color = gl.createBuffer();
+    vbo_user_texel = gl.createBuffer();
+
+    // These vertex buffers are used to draw background textures
+    vbo_quad_coord = gl.createBuffer();
+    vbo_quad_color = gl.createBuffer();
+    vbo_quad_texel = gl.createBuffer();
+    {
+        var coords = [ -1,-1, +1,-1, +1,+1, +1,+1, -1,+1, -1,-1 ];
+        var texels = [ 0,0, 1,0, 1,1, 1,1, 0,1, 0,0 ];
+        var colors = [ 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255 ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_coord); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_color); gl.bufferData(gl.ARRAY_BUFFER, new   Uint8Array(colors), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_quad_texel); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texels), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+
+    // This texture is for drawing non-textured geometry
+    tex_white = gl.createTexture();
+    {
+        var data = new Uint8Array([255,255,255,255]);
+        gl.bindTexture(gl.TEXTURE_2D, tex_white);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+    // These textures can be assigned data by the user (from generateTriangles)
+    tex_view0 = gl.createTexture();
+    tex_view0_active = false;
+}
+
+function pageload()
 {
     if (!("WebSocket" in window))
     {
@@ -631,7 +639,7 @@ function load()
     gl = cvs.getContext("webgl");
     if (!gl)
     {
-        console.log("Your browser does not support WebGL! Sorry, good luck!");
+        alert("Your browser does not support WebGL! Sorry, good luck!");
         return;
     }
 
@@ -663,7 +671,7 @@ function buttonContinue()
 
 <!-- HTML BEGIN -->
 </head>
-<body onload="load()">
+<body onload="pageload()">
     <div id="container">
         <canvas id="canvas"></canvas>
 

@@ -498,7 +498,6 @@ int vdb_loop(int fps)
 #define vdb_mode_circle         6
 #define vdb_mode_image_rgb8     7
 #define vdb_mode_slider_float   254
-#define vdb_mode_aspect         255
 
 static unsigned char vdb_current_color_mode = 0;
 static unsigned char vdb_current_color = 0;
@@ -586,14 +585,6 @@ void vdb_push_style()
     unsigned char value   = ((vdb_current_color & 0x3F)      << 0);
     unsigned char style   = opacity | mode | value;
     vdb_push_u08(style);
-}
-
-void vdb_aspect(float w, float h)
-{
-    vdb_push_u08(vdb_mode_aspect);
-    vdb_push_u08(0);
-    vdb_push_r32(w);
-    vdb_push_r32(h);
 }
 
 void vdb_point(float x, float y)

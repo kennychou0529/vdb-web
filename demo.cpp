@@ -100,7 +100,6 @@ int main()
     // {
     //     static float t = 0.0f;
     //     t += 1.0f/30.0f;
-    //     vdb_aspect((float)width, (float)height);
     //     vdb_imageRGB8(image, width, height);
     //     vdb_translucent();
     //     vdb_color(0);
@@ -109,7 +108,6 @@ int main()
 
     while (vdb_loop(60))
     {
-        vdb_aspect(1.0f, 1.0f);
         vdb_color_white(0);
         vdb_fillRect(-1,-1,2,2);
         draw_cool_spinny_thing(1.0f/60.0f);
