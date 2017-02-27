@@ -161,6 +161,90 @@ function parseStyle(style)
     return [r,g,b,a];
 }
 
+function emitPoint2(x,y, r,g,b,a, coords,colors)
+{
+    var rx = point_radius/(cvs.width/2.0);
+    var ry = point_radius/(cvs.height/2.0);
+
+    if (nice_points)
+    {
+        var n = 32;
+        for (var i = 0; i < n; i++)
+        {
+            var t1 = 2.0*3.1415926*i/n;
+            var t2 = 2.0*3.1415926*(i+1)/n;
+            var x1 = x;
+            var y1 = y;
+            var x2 = x1 + rx*Math.cos(t1);
+            var y2 = y1 + ry*Math.sin(t1);
+            var x3 = x1 + rx*Math.cos(t2);
+            var y3 = y1 + ry*Math.sin(t2);
+            coords.push(x1,y1, x2,y2, x3,y3);
+            colors.push(r,g,b,a, r,g,b,a, r,g,b,a);
+        }
+        return n*3;
+    }
+    else
+    {
+        var x1 = x-rx;
+        var x2 = x+rx;
+        var y1 = y-ry;
+        var y2 = y+ry;
+        coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
+        colors.push(r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a);
+        return 6;
+    }
+}
+
+function emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors)
+{
+    var ln = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+    var nx = -(y2-y1) / ln;
+    var ny = (x2-x1) / ln;
+
+    var rx = (line_width/2.0)/(cvs.width/2.0);
+    var ry = (line_width/2.0)/(cvs.height/2.0);
+    var x11 = x1 - nx*rx;
+    var y11 = y1 - ny*ry;
+    var x21 = x2 - nx*rx;
+    var y21 = y2 - ny*ry;
+    var x12 = x1 + nx*rx;
+    var y12 = y1 + ny*ry;
+    var x22 = x2 + nx*rx;
+    var y22 = y2 + ny*ry;
+
+    coords.push(x11,y11, x21,y21, x22,y22, x22,y22, x12,y12, x11,y11);
+    colors.push(r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a);
+
+    return 6;
+}
+
+function emitFillRect(x1,y1,x2,y2, r,g,b,a, coords,colors)
+{
+    coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
+    colors.push(r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a, r,g,b,a);
+    return 6;
+}
+
+function emitCircle(x,y,r, r,g,b,a, coords,colors)
+{
+    var n = 32;
+    for (var i = 0; i < n; i++)
+    {
+        var t1 = 2.0*3.1415926*i/n;
+        var t2 = 2.0*3.1415926*(i+1)/n;
+        var x1 = x;
+        var y1 = y;
+        var x2 = x1 + r*Math.cos(t1);
+        var y2 = y1 + r*Math.sin(t1);
+        var x3 = x1 + r*Math.cos(t2);
+        var y3 = y1 + r*Math.sin(t2);
+        coords.push(x1,y1, x2,y2, x3,y3);
+        colors.push(r,g,b,a, r,g,b,a, r,g,b,a);
+    }
+    return n*3;
+}
+
 function generateTriangles(commands)
 {
     tex_view0_active = false;
@@ -178,54 +262,16 @@ function generateTriangles(commands)
         var mode = view.getUint8(offset, little_endian); offset += 1;
         var style = view.getUint8(offset, little_endian); offset += 1;
         var rgba = parseStyle(style);
-        var color_r = rgba[0];
-        var color_g = rgba[1];
-        var color_b = rgba[2];
-        var color_a = rgba[3];
+        var r = rgba[0];
+        var g = rgba[1];
+        var b = rgba[2];
+        var a = rgba[3];
 
         if (mode == 1) // point2
         {
             var x = view.getFloat32(offset, little_endian); offset += 4;
             var y = view.getFloat32(offset, little_endian); offset += 4;
-
-            var rx = point_radius/(cvs.width/2.0);
-            var ry = point_radius/(cvs.height/2.0);
-
-            if (nice_points)
-            {
-                var n = 32;
-                for (var i = 0; i < n; i++)
-                {
-                    var t1 = 2.0*3.1415926*i/n;
-                    var t2 = 2.0*3.1415926*(i+1)/n;
-                    var x1 = x;
-                    var y1 = y;
-                    var x2 = x1 + rx*Math.cos(t1);
-                    var y2 = y1 + ry*Math.sin(t1);
-                    var x3 = x1 + rx*Math.cos(t2);
-                    var y3 = y1 + ry*Math.sin(t2);
-                    coords.push(x1,y1, x2,y2, x3,y3);
-                    colors.push(color_r,color_g,color_b,color_a,
-                                color_r,color_g,color_b,color_a,
-                                color_r,color_g,color_b,color_a);
-                    count += 3;
-                }
-            }
-            else
-            {
-                var x1 = x-rx;
-                var x2 = x+rx;
-                var y1 = y-ry;
-                var y2 = y+ry;
-                coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
-                colors.push(color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a);
-                count += 6;
-            }
+            count += emitPoint2(x,y, r,g,b,a, coords,colors);
         }
         else if (mode == 2) // point3
         {
@@ -239,30 +285,7 @@ function generateTriangles(commands)
             var y1 = view.getFloat32(offset, little_endian); offset += 4;
             var x2 = view.getFloat32(offset, little_endian); offset += 4;
             var y2 = view.getFloat32(offset, little_endian); offset += 4;
-
-            var ln = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
-            var nx = -(y2-y1) / ln;
-            var ny = (x2-x1) / ln;
-
-            var rx = (line_width/2.0)/(cvs.width/2.0);
-            var ry = (line_width/2.0)/(cvs.height/2.0);
-            var x11 = x1 - nx*rx;
-            var y11 = y1 - ny*ry;
-            var x21 = x2 - nx*rx;
-            var y21 = y2 - ny*ry;
-            var x12 = x1 + nx*rx;
-            var y12 = y1 + ny*ry;
-            var x22 = x2 + nx*rx;
-            var y22 = y2 + ny*ry;
-
-            coords.push(x11,y11, x21,y21, x22,y22, x22,y22, x12,y12, x11,y11);
-            colors.push(color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a);
-            count += 6;
+            count += emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors);
         }
         else if (mode == 4) // line3
         {
@@ -279,38 +302,14 @@ function generateTriangles(commands)
             var y1 = view.getFloat32(offset, little_endian); offset += 4;
             var x2 = view.getFloat32(offset, little_endian); offset += 4;
             var y2 = view.getFloat32(offset, little_endian); offset += 4;
-            coords.push(x1,y1, x2,y1, x2,y2, x2,y2, x1,y2, x1,y1);
-            colors.push(color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a,
-                        color_r,color_g,color_b,color_a);
-            count += 6;
+            count += emitFillRect(x1,y1,x2,y2, r,g,b,a, coords,colors);
         }
         else if (mode == 6) // circle
         {
             var x = view.getFloat32(offset, little_endian); offset += 4;
             var y = view.getFloat32(offset, little_endian); offset += 4;
             var r = view.getFloat32(offset, little_endian); offset += 4;
-
-            var n = 32;
-            for (var i = 0; i < n; i++)
-            {
-                var t1 = 2.0*3.1415926*i/n;
-                var t2 = 2.0*3.1415926*(i+1)/n;
-                var x1 = x;
-                var y1 = y;
-                var x2 = x1 + r*Math.cos(t1);
-                var y2 = y1 + r*Math.sin(t1);
-                var x3 = x1 + r*Math.cos(t2);
-                var y3 = y1 + r*Math.sin(t2);
-                coords.push(x1,y1, x2,y2, x3,y3);
-                colors.push(color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a,
-                            color_r,color_g,color_b,color_a);
-                count += 3;
-            }
+            count += emitCircle(x,y,r, r,g,b,a, coords,colors);
         }
         else if (mode == 7) // image_rgb8
         {
@@ -604,10 +603,10 @@ function anim(t)
         elapsed = (t - animation_frame_t_first)/1000.0;
         animation_frame_t_prev = t;
     }
-    document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     if (has_connection)
     {
+        document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
         stats_bps_dt += delta;
         draw();
 
@@ -615,10 +614,6 @@ function anim(t)
         {
             ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
         }
-    }
-    else
-    {
-        draw();
     }
 
     requestAnimationFrame(anim);
