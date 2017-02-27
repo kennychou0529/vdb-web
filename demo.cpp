@@ -53,16 +53,16 @@ void draw_cool_spinny_thing(float dt)
         float a2 = (two_pi/6.0f)*(i*(t1-t2) + 11.5f*t2 - 1.5f + 0.5f*t1);
         float a3 = (two_pi/6.0f)*(i*(t1-t2) + 6.0f*t1 + 12.0f*t2 - 1.5f);
 
-        vdb_color(2);
+        vdb_color_red(1);
+
         vdb_line(r1*cosf(a1), r1*sinf(a1), r2*cosf(a2), r2*sinf(a2));
-        vdb_color(8);
         vdb_line(r1*cosf(a1), r1*sinf(a1), r3*cosf(a3), r3*sinf(a3));
-        vdb_color(6);
         vdb_line(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
 
-        vdb_color(8); vdb_point(r1*cosf(a1), r1*sinf(a1));
-        vdb_color(6); vdb_point(r2*cosf(a2), r2*sinf(a2));
-        vdb_color(6); vdb_point(r3*cosf(a3), r3*sinf(a3));
+        vdb_color_red(2);
+        vdb_point(r1*cosf(a1), r1*sinf(a1));
+        vdb_point(r2*cosf(a2), r2*sinf(a2));
+        vdb_point(r3*cosf(a3), r3*sinf(a3));
     }
 
     #endif
@@ -91,32 +91,26 @@ int main()
         vdb_yrange(-1.0f, +1.0f);
         for (int i = 0; i < 32; i++)
         {
-            // vdb_color_black();
-            // vdb_color_white();
-            // vdb_color_red();
-            // vdb_color_green();
-            // vdb_color_blue();
-            // vdb_color_ramp(i/32.0f);
-            vdb_color(i);
+            vdb_color_ramp(i);
             vdb_line(i+0.5f, -1.0f, i+0.5f, +1.0f);
         }
     }
 
-    while (vdb_loop(30))
-    {
-        static float t = 0.0f;
-        t += 1.0f/30.0f;
-        vdb_aspect((float)width, (float)height);
-        vdb_imageRGB8(image, width, height);
-        vdb_translucent();
-        vdb_color(0);
-        vdb_point(sinf(t), cosf(t));
-    }
+    // while (vdb_loop(30))
+    // {
+    //     static float t = 0.0f;
+    //     t += 1.0f/30.0f;
+    //     vdb_aspect((float)width, (float)height);
+    //     vdb_imageRGB8(image, width, height);
+    //     vdb_translucent();
+    //     vdb_color(0);
+    //     vdb_point(sinf(t), cosf(t));
+    // }
 
     while (vdb_loop(60))
     {
         vdb_aspect(1.0f, 1.0f);
-        vdb_color(1);
+        vdb_color_white(0);
         vdb_fillRect(-1,-1,2,2);
         draw_cool_spinny_thing(1.0f/60.0f);
     }

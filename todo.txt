@@ -1,6 +1,3 @@
-// var select_color = document.getElementById("color_palette");
-// palette_index = parseInt(select_color.options[select_color.selectedIndex].value);
-
 demo:
 o all stages of the hough transform
 o show interactive mode and stream mode
@@ -10,13 +7,22 @@ o v4l2/ffmpeg camera input
 vdb:
 o collect messages and go through in vdb_begin
     variable modification must occur from main thread/pid!!!
+    Browser sends status updates at 20 Hz or so
+        Registered variables and their values
+        Cursor position
+        Filtered views
+    Browser sends asynchronous events when they occur
+        Continue button
+    Browser updates variable register after each vdb_end
+        for each registered variables
+            if not in received variables
+                remove?
+        for each received variable
+            if not in registered variables
+                add?
 o _beginthread and _endthread instead of CreateThread
 o NOMINMAX
 o #undef near/far
-o vdb_xrange
-o vdb_xview
-o vdb_aspect
-o vdb_setImage(slot, x, y, RGB, U08)
 o Make default behaviour to choose an arbitrary port (#define USE_FIXED_PORT 8000 otherwise)
 o vdb_mouse.x/y and vdb_select
     Browser sends mouse coordinates (NDC)
@@ -29,7 +35,6 @@ o vdb_mouse.x/y and vdb_select
 
 web:
 o nearest/linear/mipmap filtering
-o interaction: https://hpbn.co/websocket/#sending-text-and-binary-data
 o http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl/
 o https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
 o Focusable 3D camera

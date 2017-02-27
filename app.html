@@ -125,29 +125,67 @@ function rgbToHex(rf, gf, bf)
 }
 
 var palette_index = 0;
-function colorPalette(color)
+function colorPalette(color, mode)
 {
-    var palettes = [
+    if (mode == 0)
+    {
         // Primaries
+        var colors =
         [0x9E0142FF,0xEA2E49FF,0xFF6138FF,
          0x527A24FF,0x60BE4EFF,0x75E65EFF,
          0x225378FF,0x2186D4FF,0x35B1FFFF,
          0x000000FF,0x1E2936FF,0x4A697DFF,
-         0xFFE0B8FF,0xFFF0D5FF,0xFFFFFFFF],
-        // Bright
-        [0x66c1a3ff, 0xfc8c60ff, 0x89a0d1ff, 0xe889c4ff, 0xa3db49ff, 0xffd830ff, 0xe2c493ff, 0xb2b2b2ff],
-        // Spectral
-        [0x9E0142FF,0xD53E4FFF,0xF46D43FF,0xFDAE61FF,0xFEE08BFF,0xFFFFBFFF,0xE6F598FF,0xABDDA4FF,0x66C2A5FF,0x3288BDFF,0x5E4FA2FF],
-        // BrownBlueGreen
-        [0x003C30FF,0x01665EFF,0x35978FFF,0x80CDC1FF,0xC7EAE5FF,0xF5F5F5FF,0xF6E8C3FF,0xDFC27DFF,0xBF812DFF,0x8C510AFF,0x543005FF],
-        // Blue
-        [0x08306BFF,0x08519CFF,0x2171B5FF,0x4292C6FF,0x6BAED6FF,0x9ECAE1FF,0xC6DBEFFF,0xDEEBF7FF,0xF7FBFFFF],
-        // GreenBlue
-        [0x084081FF,0x0868ACFF,0x2B8CBEFF,0x4EB3D3FF,0x7BCCC4FF,0xA8DDB5FF,0xCCEBC5FF,0xE0F3DBFF,0xF7FCF0FF],
-        // Set 1
-        [0xE41A1CFF,0x377EB8FF,0x4DAF4AFF,0x984EA3FF,0xFF7F00FF,0xFFFF33FF,0xA65628FF,0xF781BFFF]
-    ];
-    return palettes[palette_index][color % (palettes[palette_index].length)];
+         0xFFE0B8FF,0xFFF0D5FF,0xFFFFFFFF];
+         return colors[color % colors.length];
+
+         // // Bright
+         // [0x66c1a3ff, 0xfc8c60ff, 0x89a0d1ff, 0xe889c4ff, 0xa3db49ff, 0xffd830ff, 0xe2c493ff, 0xb2b2b2ff],
+    }
+    else if (palette_index == 0)
+    {
+        var A1 = 0.54;
+        var A2 = 0.55;
+        var A3 = 0.56;
+        var B1 = 0.5;
+        var B2 = 0.5;
+        var B3 = 0.7;
+        var C1 = 0.5;
+        var C2 = 0.5;
+        var C3 = 0.5;
+        var D1 = 0.7;
+        var D2 = 0.8;
+        var D3 = 0.88;
+        var tp = 3.1415926*2.0;
+        var t = color / 63.0;
+        if (t > 1.0) t = 1.0;
+        if (t < 0.0) t = 0.0;
+        color_r = (A1 + B1*Math.sin(tp*(C1*t + D1)))*255.0;
+        color_g = (A2 + B2*Math.sin(tp*(C2*t + D2)))*255.0;
+        color_b = (A3 + B3*Math.sin(tp*(C3*t + D3)))*255.0;
+        if (color_r < 0) color_r = 0;
+        if (color_r > 255) color_r = 255;
+        if (color_g < 0) color_g = 0;
+        if (color_g > 255) color_g = 255;
+        if (color_b < 0) color_b = 0;
+        if (color_b > 255) color_b = 255;
+        return (color_r << 24) | (color_g << 16) | (color_b << 8) | 0xFF;
+    }
+    else
+    {
+        var palettes = [
+            // Spectral
+            [0x9E0142FF,0xD53E4FFF,0xF46D43FF,0xFDAE61FF,0xFEE08BFF,0xFFFFBFFF,0xE6F598FF,0xABDDA4FF,0x66C2A5FF,0x3288BDFF,0x5E4FA2FF],
+            // BrownBlueGreen
+            [0x003C30FF,0x01665EFF,0x35978FFF,0x80CDC1FF,0xC7EAE5FF,0xF5F5F5FF,0xF6E8C3FF,0xDFC27DFF,0xBF812DFF,0x8C510AFF,0x543005FF],
+            // Blue
+            [0x08306BFF,0x08519CFF,0x2171B5FF,0x4292C6FF,0x6BAED6FF,0x9ECAE1FF,0xC6DBEFFF,0xDEEBF7FF,0xF7FBFFFF],
+            // GreenBlue
+            [0x084081FF,0x0868ACFF,0x2B8CBEFF,0x4EB3D3FF,0x7BCCC4FF,0xA8DDB5FF,0xCCEBC5FF,0xE0F3DBFF,0xF7FCF0FF],
+            // Set 1
+            [0xE41A1CFF,0x377EB8FF,0x4DAF4AFF,0x984EA3FF,0xFF7F00FF,0xFFFF33FF,0xA65628FF,0xF781BFFF]
+        ];
+        return palettes[palette_index-1][color % (palettes[palette_index-1].length)];
+    }
 }
 
 var alpha_value = 120;
@@ -174,13 +212,15 @@ function generateTriangles(commands)
         var mode = view.getUint8(offset, little_endian); offset += 1;
         var style = view.getUint8(offset, little_endian); offset += 1;
 
-        var style_color_index = style & 0x7F;
-        var style_alpha_index = (style >> 7) & 0x01;
-        var color = colorPalette(style_color_index);
+        var style_opacity     = (style >> 7) & 0x01;
+        var style_color_mode  = (style >> 6) & 0x01;
+        var style_color_value = (style >> 0) & 0x3F;
+
+        var color = colorPalette(style_color_value, style_color_mode);
         var color_r = (color >> 24) & 0xFF;
         var color_g = (color >> 16) & 0xFF;
         var color_b = (color >>  8) & 0xFF;
-        var color_a = alphaPalette(style_alpha_index) & 0xFF;
+        var color_a = alphaPalette(style_opacity) & 0xFF;
 
         if (mode == 1) // point2
         {
@@ -706,7 +746,7 @@ function buttonContinue()
 
             <div class="input_thing">
                 <select id="color_palette">
-                  <option value="0">Bright</option>
+                  <option value="0">Smooth</option>
                   <option value="1">Spectral</option>
                   <option value="2">BrownBlueGreen</option>
                   <option value="3">Blue</option>

@@ -53,6 +53,8 @@
 #define VDB_USING_DEFAULT_LISTEN_PORT
 #endif
 
+#define VDB_MAX_R32_VARIABLES 1024
+
 typedef struct
 {
     #ifdef VDB_WINDOWS
@@ -74,14 +76,20 @@ typedef struct
     int critical_error;
     int has_connection;
     int work_buffer_used;
-    char recv_buffer[VDB_RECV_BUFFER_SIZE];
     char swapbuffer1[VDB_WORK_BUFFER_SIZE];
     char swapbuffer2[VDB_WORK_BUFFER_SIZE];
     char *work_buffer;
     char *send_buffer;
 
-    // @ message and event queue
-    int msg_continue;
+    char recv_buffer[VDB_RECV_BUFFER_SIZE];
+
+    // These hold the latest state from the browser
+    uint64_t msg_var_r32_index[VDB_MAX_R32_VARIABLES];
+    float    msg_var_r32_value[VDB_MAX_R32_VARIABLES];
+    int      msg_var_r32_count;
+    int      msg_flag_continue;
+    // float    app_mouse_x;
+    // float    app_mouse_y;
 } vdb_shared_t;
 
 static vdb_shared_t *vdb_shared = 0;
@@ -310,11 +318,34 @@ int vdb_recv_thread()
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
             continue;
         }
-        vdb_log("Got a final message (%d): '%s'\n", msg.length, msg.payload);
-        if (msg.length == 1 && msg.payload[0] == 'c')
+        vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
+
+        if (msg.length == 1 && msg.payload[0] == 'c') // asynchronous 'continue' event
         {
-            vs->msg_continue = 1;
+            vs->msg_flag_continue = 1;
         }
+
+        if (msg.length > 1 && msg.payload[0] == 's') // status update
+        {
+            // if (msg.length > 1 && msg.payload[0] == 'f')
+            // {
+            //     char *ptr = msg.payload+1;
+            //     uint32_t addr_low, addr_high;
+            //     float value;
+            //     if (sscanf(ptr, "%u %u %f", &addr_low, &addr_high, &value))
+            //     {
+            //         uint64_t addr = (addr_high << 32) | addr_low;
+            //         for (int i = 0; i < vs->app_var_r32_count; i++)
+            //         {
+            //             if (addr == vs->app_var_r32_index[i])
+            //             {
+            //                 vs->app_var_r32_value[i] = value;
+            //             }
+            //         }
+            //     }
+            // }
+        }
+
     }
     return 0;
 }
@@ -441,9 +472,9 @@ int vdb_loop(int fps)
     {
         vdb_end();
         vdb_sleep(1000/fps);
-        if (vdb_shared->msg_continue)
+        if (vdb_shared->msg_flag_continue)
         {
-            vdb_shared->msg_continue = 0;
+            vdb_shared->msg_flag_continue = 0;
             entry = 1;
             return 0;
         }
@@ -456,18 +487,22 @@ int vdb_loop(int fps)
 
 // Public API implementation
 
+#define vdb_color_mode_primary  0
+#define vdb_color_mode_ramp     1
+
+#define vdb_mode_point2         1
+#define vdb_mode_point3         2
+#define vdb_mode_line2          3
+#define vdb_mode_line3          4
+#define vdb_mode_fill_rect      5
+#define vdb_mode_circle         6
+#define vdb_mode_image_rgb8     7
+#define vdb_mode_slider_float   254
+#define vdb_mode_aspect         255
+
+static unsigned char vdb_current_color_mode = 0;
 static unsigned char vdb_current_color = 0;
 static unsigned char vdb_current_alpha = 0;
-
-static unsigned char vdb_mode_point2 = 1;
-static unsigned char vdb_mode_point3 = 2;
-static unsigned char vdb_mode_line2 = 3;
-static unsigned char vdb_mode_line3 = 4;
-static unsigned char vdb_mode_fill_rect = 5;
-static unsigned char vdb_mode_circle = 6;
-static unsigned char vdb_mode_image_rgb8 = 7;
-static unsigned char vdb_mode_slider_float = 254;
-static unsigned char vdb_mode_aspect = 255;
 
 static float vdb_xrange_left = -1.0f;
 static float vdb_xrange_right = +1.0f;
@@ -478,7 +513,7 @@ static float vdb_zrange_near = +1.0f;
 
 void vdb_init_drawstate()
 {
-    vdb_current_color = 0;
+    vdb_current_color_mode = vdb_color_mode_primary;
     vdb_current_alpha = 0;
     vdb_xrange_left = -1.0f;
     vdb_xrange_right = +1.0f;
@@ -491,20 +526,40 @@ void vdb_init_drawstate()
 void vdb_translucent() { vdb_current_alpha = 1; }
 void vdb_opaque()      { vdb_current_alpha = 0; }
 
-void vdb_color(int c)
+// Opacity: 1 bit (opaque or translucent)
+// Color mode: 1 bit (ramp or primary)
+// Color value: 6 bit (64 values)
+
+void vdb_color_primary(int primary, int shade)
 {
-    // wrap around interval
-    vdb_current_color = (unsigned char)(c % 127);
+    if (primary < 0) primary = 0;
+    if (primary > 4) primary = 4;
+    if (shade < 0) shade = 0;
+    if (shade > 2) shade = 2;
+    vdb_current_color_mode = vdb_color_mode_primary;
+    vdb_current_color = (unsigned char)(3*primary + shade);
 }
 
-void vdb_colorf(float cf)
+void vdb_color_rampf(float value)
 {
-    // clamp to edge
-    int c = (int)(cf*127.0f);
-    if (c < 0) c = 0;
-    if (c > 127) c = 127;
-    vdb_color(c);
+    int i = (int)(value*63.0f);
+    if (i < 0) i = 0;
+    if (i > 63) i = 63;
+    vdb_current_color_mode = vdb_color_mode_ramp;
+    vdb_current_color = (unsigned char)i;
 }
+
+void vdb_color_ramp(int i)
+{
+    vdb_current_color_mode = vdb_color_mode_ramp;
+    vdb_current_color = (unsigned char)(i % 63);
+}
+
+void vdb_color_red(int shade)   { vdb_color_primary(0, shade); }
+void vdb_color_green(int shade) { vdb_color_primary(1, shade); }
+void vdb_color_blue(int shade)  { vdb_color_primary(2, shade); }
+void vdb_color_black(int shade) { vdb_color_primary(3, shade); }
+void vdb_color_white(int shade) { vdb_color_primary(4, shade); }
 
 void vdb_xrange(float left, float right)
 {
@@ -530,7 +585,11 @@ float vdb_map_z(float z) { return +1.0f - 2.0f*(z-vdb_zrange_near)/(vdb_zrange_f
 
 void vdb_push_style()
 {
-    vdb_push_u08(vdb_current_color | (vdb_current_alpha << 7));
+    unsigned char opacity = ((vdb_current_alpha & 0x01)      << 7);
+    unsigned char mode    = ((vdb_current_color_mode & 0x01) << 6);
+    unsigned char value   = ((vdb_current_color & 0x3F)      << 0);
+    unsigned char style   = opacity | mode | value;
+    vdb_push_u08(style);
 }
 
 void vdb_aspect(float w, float h)
