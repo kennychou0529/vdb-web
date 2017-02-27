@@ -346,23 +346,23 @@ function parseCommands(commands)
             tex_view0_active = true;
             data = null;
         }
-        else if (mode == 254) // slider float
-        {
-            if (!mod1f_registered)
-            {
-                mod1f_registered = true;
-                mod1f_lobits = view.getUint32(offset, little_endian); offset += 4;
-                mod1f_hibits = view.getUint32(offset, little_endian); offset += 4;
-                mod1f_value = view.getFloat32(offset, little_endian); offset += 4;
-                mod1f_min_value = view.getFloat32(offset, little_endian); offset += 4;
-                mod1f_max_value = view.getFloat32(offset, little_endian); offset += 4;
-                document.getElementById("mod1f_range").min = mod1f_min_value;
-                document.getElementById("mod1f_range").max = mod1f_max_value;
-                document.getElementById("mod1f_range").value = mod1f_value;
-                document.getElementById("mod1f_label_name").innerHTML = "x: ";
-                document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
-            }
-        }
+        // else if (mode == 254) // slider float
+        // {
+        //     if (!mod1f_registered)
+        //     {
+        //         mod1f_registered = true;
+        //         mod1f_lobits = view.getUint32(offset, little_endian); offset += 4;
+        //         mod1f_hibits = view.getUint32(offset, little_endian); offset += 4;
+        //         mod1f_value = view.getFloat32(offset, little_endian); offset += 4;
+        //         mod1f_min_value = view.getFloat32(offset, little_endian); offset += 4;
+        //         mod1f_max_value = view.getFloat32(offset, little_endian); offset += 4;
+        //         document.getElementById("mod1f_range").min = mod1f_min_value;
+        //         document.getElementById("mod1f_range").max = mod1f_max_value;
+        //         document.getElementById("mod1f_range").value = mod1f_value;
+        //         document.getElementById("mod1f_label_name").innerHTML = "x: ";
+        //         document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
+        //     }
+        // }
     }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_coord);
@@ -380,12 +380,6 @@ function parseCommands(commands)
 
 function draw()
 {
-    // Update parameters from GUI
-    line_width = parseFloat(document.getElementById("line_width").value);
-    point_radius = parseFloat(document.getElementById("point_radius").value);
-    alpha_value = parseFloat(document.getElementById("alpha_value").value);
-    nice_points = document.getElementById("nice_points").checked;
-
     // Resize framebuffer resolution to match size of displayed window
     if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
     {
@@ -441,18 +435,6 @@ function draw()
         gl.drawArrays(gl.TRIANGLES, 0, num_elements);
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
-}
-
-function draw_idle()
-{
-    if (cvs.width  != cvs.clientWidth || cvs.height != cvs.clientHeight)
-    {
-        cvs.width  = cvs.clientWidth;
-        cvs.height = cvs.clientHeight;
-    }
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.clearColor(1, 1, 1, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
 var connect_called = false;
@@ -532,20 +514,19 @@ function anim(t)
 
     if (has_connection)
     {
-        stats_bps_dt += delta;
         draw();
 
-        if (mod1f_registered)
-        {
-            ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
-        }
+        document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
+        line_width = parseFloat(document.getElementById("line_width").value);
+        point_radius = parseFloat(document.getElementById("point_radius").value);
+        alpha_value = parseFloat(document.getElementById("alpha_value").value);
+        nice_points = document.getElementById("nice_points").checked;
+        stats_bps_dt += delta;
+        // if (mod1f_registered)
+        // {
+        //     ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
+        // }
     }
-    else
-    {
-        draw_idle();
-    }
-
-    document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
 
     requestAnimationFrame(anim);
 }
@@ -681,11 +662,11 @@ function buttonContinue()
                 <p id="fps"></p>
             </div>
 
-            <div class="input_thing">
+            <!-- <div class="input_thing">
                 <label id="mod1f_label_name"></label>
                 <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
                 <label id="mod1f_label_value"></label>
-            </div>
+            </div> -->
         </div>
 
         <div id="config">
