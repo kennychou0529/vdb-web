@@ -526,10 +526,6 @@ void vdb_init_drawstate()
 void vdb_translucent() { vdb_current_alpha = 1; }
 void vdb_opaque()      { vdb_current_alpha = 0; }
 
-// Opacity: 1 bit (opaque or translucent)
-// Color mode: 1 bit (ramp or primary)
-// Color value: 6 bit (64 values)
-
 void vdb_color_primary(int primary, int shade)
 {
     if (primary < 0) primary = 0;
