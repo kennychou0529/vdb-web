@@ -96,8 +96,10 @@ int main()
         }
 
         static float x = 0.0f;
-        vdb_slider1f("hey", &x, 1.0f, 32.0f);
-        vdb_point(x, 0.0f);
+        static float y = 0.0f;
+        vdb_slider1f("x", &x, 1.0f, 32.0f);
+        vdb_slider1f("y", &y, -1.0f, +1.0f);
+        vdb_point(x, y);
     }
 
     // while (vdb_loop(30))

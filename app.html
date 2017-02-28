@@ -31,12 +31,12 @@ body {
     margin: auto;
 }
 
-#user_config { float: right; }
+#user_widgets { float: right; }
 #status { display: inline; color: #888; }
 #fps { display: inline; color: #888; }
 
 .input_thing select { width: 100px; }
-input { width: 100px; vertical-align: middle; padding: 0; margin: 0; }
+.input_thing input { width: 100px; vertical-align: middle; padding: 0; margin: 0; margin-left: 4px; margin-right: 4px; }
 .input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 280px; padding: 6px; margin-bottom: 8px; }
 
 a { background: #bb5544; vertical-align: middle; padding: 2px 4px 2px 4px; border-radius: 2px; color: #fff; text-decoration: none; }
@@ -265,10 +265,7 @@ function parseSliderFloat(label, value, min_value, max_value)
         var_float32_value.push(value);
         var_float32_valid.push(true);
         var_float32_count++;
-        document.getElementById("mod1f_range").min = min_value;
-        document.getElementById("mod1f_range").max = max_value;
-        document.getElementById("mod1f_range").value = value;
-        document.getElementById("mod1f_label_name").innerHTML = label;
+        htmlAddSliderFloat(label, min_value, max_value, 0.01, value);
         console.log("Registered " + label + " with initial value " + value);
     }
     var_float32_valid[registered_i] = true;
@@ -401,6 +398,7 @@ function parseCommands(commands)
         if (!var_float32_valid[i])
         {
             console.log("Removing " + var_float32_label[i]);
+            htmlRemoveWidget(var_float32_label[i]);
             var_float32_label.splice(i, 1);
             var_float32_value.splice(i, 1);
             var_float32_valid.splice(i, 1);
@@ -509,7 +507,6 @@ function connect()
 
             ws.onclose = function()
             {
-                mod1f_registered = false;
                 tex_view0_active = false;
                 cmd_data = null;
                 ws = null;
@@ -563,7 +560,12 @@ function anim(t)
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
 
-        // todo: lookup id
+        for (var i = 0; i < var_float32_count; i++)
+        {
+            document.getElementById(var_float32_label[i] + "_value").innerHTML = var_float32_value[i].toPrecision(4);
+            document.getElementById(var_float32_label[i] + "_label").innerHTML = var_float32_label[i]; // @ truncate spaces
+        }
+
         status = "s";
         status = status + " " + var_float32_count;
         for (var i = 0; i < var_float32_count; i++)
@@ -571,7 +573,6 @@ function anim(t)
             label = var_float32_label[i];
             value = var_float32_value[i];
             status = status + " " + label + " " + value;
-            document.getElementById("mod1f_label_value").innerHTML = var_float32_value[i].toPrecision(4);
         }
         ws.send(status);
     }
@@ -656,6 +657,55 @@ function init()
     tex_view0_active = false;
 }
 
+// Adds the following to the user widget section
+// div: id = label
+//   label: id = label + "_value"
+//   input: id = label + "_input", type="range"
+//   label: id = label + "_label"
+function htmlAddSliderFloat(label, min, max, step, value)
+{
+    var div = document.createElement("div");
+    div.className = "input_thing";
+    div.id = label + "_div";
+
+    // create label text
+    {
+        var e = document.createElement("label");
+        e.id = label + "_label";
+        div.appendChild(e);
+    }
+
+    // create slider input
+    {
+        var e = document.createElement("input");
+        e.id = label;
+        e.setAttribute("type", "range");
+        e.setAttribute("min", min);
+        e.setAttribute("max", max);
+        e.setAttribute("step", step);
+        e.setAttribute("value", value);
+        e.setAttribute("onchange", "sliderFloatChanged(this)")
+        div.appendChild(e);
+    }
+
+    // create value text
+    {
+        var e = document.createElement("label");
+        e.id = label + "_value";
+        div.appendChild(e);
+    }
+
+    var user = document.getElementById("user_widgets");
+    user.appendChild(div);
+}
+
+function htmlRemoveWidget(label)
+{
+    var user = document.getElementById("user_widgets");
+    var item = document.getElementById(label + "_div");
+    user.removeChild(item);
+}
+
 function pageload()
 {
     if (!("WebSocket" in window))
@@ -680,10 +730,15 @@ function pageload()
     anim();
 }
 
-function mod1f_onchange(e)
+function sliderFloatChanged(e)
 {
-    // todo: check id, lookup etc
-    var_float32_value[0] = parseFloat(e.value);
+    for (var i = 0; i < var_float32_count; i++)
+    {
+        if (e.id === var_float32_label[i])
+        {
+            var_float32_value[i] = parseFloat(e.value);
+        }
+    }
 }
 
 function buttonConnect()
@@ -693,7 +748,8 @@ function buttonConnect()
 
 function buttonContinue()
 {
-    ws.send("c");
+    if (ws != null)
+        ws.send("c");
 }
 </script>
 <!-- SCRIPT END-->
@@ -704,16 +760,10 @@ function buttonContinue()
     <div id="container">
         <canvas id="canvas"></canvas>
 
-        <div id="user_config">
+        <div id="user_widgets">
             <div class="input_thing">
                 <a href="javascript:buttonContinue()">Continue</a>
                 <p id="fps"></p>
-            </div>
-
-            <div class="input_thing">
-                <label id="mod1f_label_value"></label>
-                <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
-                <label id="mod1f_label_name"></label>
             </div>
         </div>
 

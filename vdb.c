@@ -241,7 +241,9 @@ int vdb_handle_message(vdb_msg_t msg)
 
                 // read value
                 vdb_assert(sscanf(str+pos, "%f%n", &value, &got) == 1);
-                pos += got;
+
+                pos += got; // read past float
+                pos +=   1; // read past space
 
                 vs->msg_var_r32_label[i] = label;
                 vs->msg_var_r32_value[i] = value;
