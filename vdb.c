@@ -170,6 +170,62 @@ int vdb_send_thread()
 DWORD WINAPI vdb_win_send_thread(void *vdata) { (void)(vdata); return vdb_send_thread(); }
 #endif
 
+int vdb_handle_message(vdb_msg_t msg)
+{
+    // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
+    vdb_shared_t *vs = vdb_shared;
+
+    if (msg.length == 1 && msg.payload[0] == 'c') // asynchronous 'continue' event
+    {
+        vs->msg_flag_continue = 1;
+        return 1;
+    }
+
+    // @ todo: mutex on latest message?
+    if (msg.length > 1 && msg.payload[0] == 's') // status update
+    {
+        char *ptr = msg.payload+1;
+        {
+            int n;
+            int read_bytes;
+            if (sscanf(ptr, "%d%n", &n, &read_bytes) != 1)
+            {
+                vdb_err_once("Failed to read counter in status message\n");
+                return 0;
+            }
+            ptr += read_bytes;
+
+            if (n < 0 || n > VDB_MAX_R32_VARIABLES)
+            {
+                vdb_err_once("Unexpected number of float32 variables in status message\n");
+                return 0;
+            }
+
+            if (n >= 0 && n <= VDB_MAX_R32_VARIABLES)
+            {
+                int i = 0;
+                for (i = 0; i < n; i++)
+                {
+                    uint32_t addr_low, addr_high; float value;
+                    if (sscanf(ptr, "%u %u %f%n", &addr_low, &addr_high, &value, &read_bytes) != 3)
+                    {
+                        vdb_err_once("Failed to read variable triplet in status message\n");
+                        return 0;
+                    }
+                    ptr += read_bytes;
+
+                    uint64_t addr = ((uint64_t)addr_high << 32) | (uint64_t)addr_low;
+                    vs->msg_var_r32_address[i] = addr;
+                    vs->msg_var_r32_value[i] = value;
+                }
+                vs->msg_var_r32_count = n;
+            }
+        }
+    }
+
+    return 1;
+}
+
 int vdb_recv_thread()
 {
     vdb_shared_t *vs = vdb_shared;
@@ -322,41 +378,7 @@ int vdb_recv_thread()
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
             continue;
         }
-        // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
-
-        if (msg.length == 1 && msg.payload[0] == 'c') // asynchronous 'continue' event
-        {
-            vs->msg_flag_continue = 1;
-        }
-
-        // @ todo: mutex on latest message?
-        if (msg.length > 1 && msg.payload[0] == 's') // status update
-        {
-            char *ptr = msg.payload+1;
-            {
-                int n;
-                int read_bytes;
-                sscanf(ptr, "%d%n", &n, &read_bytes);
-                ptr += read_bytes;
-
-                if (n >= 0 && n <= VDB_MAX_R32_VARIABLES)
-                {
-                    int i = 0;
-                    for (i = 0; i < n; i++)
-                    {
-                        uint32_t addr_low, addr_high; float value;
-                        sscanf(ptr, "%u %u %f%n", &addr_low, &addr_high, &value, &read_bytes);
-                        ptr += read_bytes;
-
-                        uint64_t addr = ((uint64_t)addr_high << 32) | (uint64_t)addr_low;
-                        vs->msg_var_r32_address[i] = addr;
-                        vs->msg_var_r32_value[i] = value;
-                    }
-                    vs->msg_var_r32_count = n;
-                }
-            }
-        }
-
+        vdb_handle_message(msg);
     }
     return 0;
 }
