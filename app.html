@@ -107,13 +107,13 @@ var nice_points = false;
 var connection_address = "localhost:8000";
 var alpha_value = 120;
 
-// Variable modifiers
-var mod1f_registered = false;
-var mod1f_lobits = null;
-var mod1f_hibits = null;
-var mod1f_min_value = 0.0;
-var mod1f_max_value = 1.0;
-var mod1f_value = 0.0;
+var modifiers_r32_lobits = [];
+var modifiers_r32_hibits = [];
+var modifiers_r32_min = [];
+var modifiers_r32_max = [];
+var modifiers_r32_value = [];
+var modifiers_r32_valid = [];
+var modifiers_r32_count = 0;
 
 function clamp(v, lo, hi)
 {
@@ -245,9 +245,46 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
+function parseSliderFloat(lobits, hibits, value, min_value, max_value)
+{
+    var registered_i = -1;
+    for (var i = 0; i < modifiers_r32_count; i++)
+    {
+        if (modifiers_r32_lobits[i] == lobits && modifiers_r32_hibits[i] == hibits)
+        {
+            registered_i = i;
+            break;
+        }
+    }
+
+    if (registered_i < 0)
+    {
+        registered_i = modifiers_r32_count;
+        console.log("Registered " + lobits + " " + hibits + " " + value);
+        modifiers_r32_lobits.push(lobits);
+        modifiers_r32_hibits.push(hibits);
+        modifiers_r32_min.push(min_value);
+        modifiers_r32_max.push(max_value);
+        modifiers_r32_value.push(value);
+        modifiers_r32_valid.push(true);
+        modifiers_r32_count++;
+
+        document.getElementById("mod1f_range").min = min_value;
+        document.getElementById("mod1f_range").max = max_value;
+        document.getElementById("mod1f_range").value = value;
+        document.getElementById("mod1f_label_name").innerHTML = "x: ";
+    }
+
+    modifiers_r32_valid[registered_i] = true;
+}
+
 function parseCommands(commands)
 {
     tex_view0_active = false;
+    for (var i = 0; i < modifiers_r32_count; i++)
+    {
+        modifiers_r32_valid[i] = false;
+    }
 
     var coords = [];
     var colors = [];
@@ -346,23 +383,15 @@ function parseCommands(commands)
             tex_view0_active = true;
             data = null;
         }
-        // else if (mode == 254) // slider float
-        // {
-        //     if (!mod1f_registered)
-        //     {
-        //         mod1f_registered = true;
-        //         mod1f_lobits = view.getUint32(offset, little_endian); offset += 4;
-        //         mod1f_hibits = view.getUint32(offset, little_endian); offset += 4;
-        //         mod1f_value = view.getFloat32(offset, little_endian); offset += 4;
-        //         mod1f_min_value = view.getFloat32(offset, little_endian); offset += 4;
-        //         mod1f_max_value = view.getFloat32(offset, little_endian); offset += 4;
-        //         document.getElementById("mod1f_range").min = mod1f_min_value;
-        //         document.getElementById("mod1f_range").max = mod1f_max_value;
-        //         document.getElementById("mod1f_range").value = mod1f_value;
-        //         document.getElementById("mod1f_label_name").innerHTML = "x: ";
-        //         document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
-        //     }
-        // }
+        else if (mode == 254) // slider float
+        {
+            var lobits = view.getUint32(offset, little_endian); offset += 4;
+            var hibits = view.getUint32(offset, little_endian); offset += 4;
+            var value = view.getFloat32(offset, little_endian); offset += 4;
+            var min_value = view.getFloat32(offset, little_endian); offset += 4;
+            var max_value = view.getFloat32(offset, little_endian); offset += 4;
+            parseSliderFloat(lobits, hibits, value, min_value, max_value);
+        }
     }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_coord);
@@ -370,6 +399,22 @@ function parseCommands(commands)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.DYNAMIC_DRAW);
+
+    for (var i = 0; i < modifiers_r32_count; i++)
+    {
+        if (!modifiers_r32_valid[i])
+        {
+            console.log("Removing " + i);
+            modifiers_r32_lobits.splice(i, 1);
+            modifiers_r32_hibits.splice(i, 1);
+            modifiers_r32_min.splice(i, 1);
+            modifiers_r32_max.splice(i, 1);
+            modifiers_r32_value.splice(i, 1);
+            modifiers_r32_valid.splice(i, 1);
+            modifiers_r32_count--;
+            i--;
+        }
+    }
 
     coords = null;
     colors = null;
@@ -522,10 +567,19 @@ function anim(t)
         alpha_value = parseFloat(document.getElementById("alpha_value").value);
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
-        // if (mod1f_registered)
-        // {
-        //     ws.send("f '" + mod1f_lobits + "' '" + mod1f_hibits + "' " + mod1f_value);
-        // }
+
+        // todo: lookup id
+        status = "s";
+        status = status + " " + modifiers_r32_count;
+        for (var i = 0; i < modifiers_r32_count; i++)
+        {
+            lobits = modifiers_r32_lobits[i];
+            hibits = modifiers_r32_hibits[i];
+            value = modifiers_r32_value[i];
+            status = status + lobits + " " + hibits + " " + value;
+            document.getElementById("mod1f_label_value").innerHTML = modifiers_r32_value[i].toPrecision(4);
+        }
+        ws.send(status);
     }
 
     requestAnimationFrame(anim);
@@ -634,8 +688,8 @@ function pageload()
 
 function mod1f_onchange(e)
 {
-    mod1f_value = parseFloat(e.value);
-    document.getElementById("mod1f_label_value").innerHTML = mod1f_value.toPrecision(4);
+    // todo: check id, lookup etc
+    modifiers_r32_value[0] = parseFloat(e.value);
 }
 
 function buttonConnect()
@@ -662,11 +716,11 @@ function buttonContinue()
                 <p id="fps"></p>
             </div>
 
-            <!-- <div class="input_thing">
+            <div class="input_thing">
                 <label id="mod1f_label_name"></label>
                 <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
                 <label id="mod1f_label_value"></label>
-            </div> -->
+            </div>
         </div>
 
         <div id="config">

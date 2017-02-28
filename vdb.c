@@ -53,6 +53,7 @@
 #define VDB_USING_DEFAULT_LISTEN_PORT
 #endif
 
+#define VDB_MAX_S32_VARIABLES 1024
 #define VDB_MAX_R32_VARIABLES 1024
 
 typedef struct
@@ -87,6 +88,9 @@ typedef struct
     uint64_t msg_var_r32_index[VDB_MAX_R32_VARIABLES];
     float    msg_var_r32_value[VDB_MAX_R32_VARIABLES];
     int      msg_var_r32_count;
+    // uint64_t msg_var_s32_index[VDB_MAX_S32_VARIABLES];
+    // int32_t  msg_var_s32_value[VDB_MAX_S32_VARIABLES];
+    // int      msg_var_s32_count;
     int      msg_flag_continue;
     // float    app_mouse_x;
     // float    app_mouse_y;
@@ -327,23 +331,21 @@ int vdb_recv_thread()
 
         if (msg.length > 1 && msg.payload[0] == 's') // status update
         {
-            // if (msg.length > 1 && msg.payload[0] == 'f')
-            // {
-            //     char *ptr = msg.payload+1;
-            //     uint32_t addr_low, addr_high;
-            //     float value;
-            //     if (sscanf(ptr, "%u %u %f", &addr_low, &addr_high, &value))
-            //     {
-            //         uint64_t addr = (addr_high << 32) | addr_low;
-            //         for (int i = 0; i < vs->app_var_r32_count; i++)
-            //         {
-            //             if (addr == vs->app_var_r32_index[i])
-            //             {
-            //                 vs->app_var_r32_value[i] = value;
-            //             }
-            //         }
-            //     }
-            // }
+            char *ptr = msg.payload+1;
+            {
+                int n;
+                int i = 0;
+                ptr += sscanf(ptr, "%d", &n);
+                for (i = 0; i < n; i++)
+                {
+                    uint32_t addr_low, addr_high;
+                    float value;
+                    ptr += sscanf(ptr, "%u %u %f", &addr_low, &addr_high, &value);
+                    uint64_t addr = ((uint64_t)addr_high << 32) | addr_low;
+
+                    printf("%llu %f\n", addr, value);
+                }
+            }
         }
 
     }
@@ -654,14 +656,14 @@ void vdb_imageRGB8(const void *data, int w, int h)
     vdb_push_bytes(data, w*h*3);
 }
 
-// void vdb_slider1f(float *x, float min_value, float max_value)
-// {
-//     uint64_t addr = (uint64_t)x;
-//     vdb_push_u08(vdb_mode_slider_float);
-//     vdb_push_style();
-//     vdb_push_u32(addr & 0xFFFFFFFF); // low-bits
-//     vdb_push_u32((addr >> 32) & 0xFFFFFFFF); // high-bits
-//     vdb_push_r32(*x);
-//     vdb_push_r32(min_value);
-//     vdb_push_r32(max_value);
-// }
+void vdb_slider1f(float *x, float min_value, float max_value)
+{
+    uint64_t addr = (uint64_t)x;
+    vdb_push_u08(vdb_mode_slider_float);
+    vdb_push_style();
+    vdb_push_u32(addr & 0xFFFFFFFF); // low-bits
+    vdb_push_u32((addr >> 32) & 0xFFFFFFFF); // high-bits
+    vdb_push_r32(*x);
+    vdb_push_r32(min_value);
+    vdb_push_r32(max_value);
+}
