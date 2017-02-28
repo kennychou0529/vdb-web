@@ -85,7 +85,7 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    while (vdb_loop(1))
+    while (vdb_loop(60))
     {
         vdb_xrange(0, 32);
         vdb_yrange(-1.0f, +1.0f);
@@ -96,10 +96,8 @@ int main()
         }
 
         static float x = 0.0f;
-        uint32_t lobits = ((uint64_t)&x) & 0xFFFFFFFF;
-        uint32_t hibits = ((uint64_t)&x >> 32) & 0xFFFFFFFF;
-        printf("%u %u\n", lobits, hibits);
-        vdb_slider1f(&x, 1.0f, 3.0f);
+        vdb_slider1f(&x, 1.0f, 32.0f);
+        vdb_point(x, 0.0f);
     }
 
     // while (vdb_loop(30))

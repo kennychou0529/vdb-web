@@ -85,10 +85,10 @@ typedef struct
     char recv_buffer[VDB_RECV_BUFFER_SIZE];
 
     // These hold the latest state from the browser
-    uint64_t msg_var_r32_index[VDB_MAX_R32_VARIABLES];
+    uint64_t msg_var_r32_address[VDB_MAX_R32_VARIABLES];
     float    msg_var_r32_value[VDB_MAX_R32_VARIABLES];
     int      msg_var_r32_count;
-    // uint64_t msg_var_s32_index[VDB_MAX_S32_VARIABLES];
+    // uint64_t msg_var_s32_address[VDB_MAX_S32_VARIABLES];
     // int32_t  msg_var_s32_value[VDB_MAX_S32_VARIABLES];
     // int      msg_var_s32_count;
     int      msg_flag_continue;
@@ -322,28 +322,37 @@ int vdb_recv_thread()
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
             continue;
         }
-        vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
+        // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
 
         if (msg.length == 1 && msg.payload[0] == 'c') // asynchronous 'continue' event
         {
             vs->msg_flag_continue = 1;
         }
 
+        // @ todo: mutex on latest message?
         if (msg.length > 1 && msg.payload[0] == 's') // status update
         {
             char *ptr = msg.payload+1;
             {
                 int n;
-                int i = 0;
-                ptr += sscanf(ptr, "%d", &n);
-                for (i = 0; i < n; i++)
-                {
-                    uint32_t addr_low, addr_high;
-                    float value;
-                    ptr += sscanf(ptr, "%u %u %f", &addr_low, &addr_high, &value);
-                    uint64_t addr = ((uint64_t)addr_high << 32) | addr_low;
+                int read_bytes;
+                sscanf(ptr, "%d%n", &n, &read_bytes);
+                ptr += read_bytes;
 
-                    printf("%llu %f\n", addr, value);
+                if (n >= 0 && n <= VDB_MAX_R32_VARIABLES)
+                {
+                    int i = 0;
+                    for (i = 0; i < n; i++)
+                    {
+                        uint32_t addr_low, addr_high; float value;
+                        sscanf(ptr, "%u %u %f%n", &addr_low, &addr_high, &value, &read_bytes);
+                        ptr += read_bytes;
+
+                        uint64_t addr = ((uint64_t)addr_high << 32) | (uint64_t)addr_low;
+                        vs->msg_var_r32_address[i] = addr;
+                        vs->msg_var_r32_value[i] = value;
+                    }
+                    vs->msg_var_r32_count = n;
                 }
             }
         }
@@ -666,4 +675,19 @@ void vdb_slider1f(float *x, float min_value, float max_value)
     vdb_push_r32(*x);
     vdb_push_r32(min_value);
     vdb_push_r32(max_value);
+
+    {
+        // Update variable
+        uint64_t *msg_addr = vdb_shared->msg_var_r32_address;
+        float *msg_value = vdb_shared->msg_var_r32_value;
+        int n = vdb_shared->msg_var_r32_count;
+        int i = 0;
+        for (i = 0; i < n; i++)
+        {
+            if (msg_addr[i] == addr)
+            {
+                *x = msg_value[i];
+            }
+        }
+    }
 }

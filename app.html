@@ -576,7 +576,7 @@ function anim(t)
             lobits = modifiers_r32_lobits[i];
             hibits = modifiers_r32_hibits[i];
             value = modifiers_r32_value[i];
-            status = status + lobits + " " + hibits + " " + value;
+            status = status + " " + lobits + " " + hibits + " " + value;
             document.getElementById("mod1f_label_value").innerHTML = modifiers_r32_value[i].toPrecision(4);
         }
         ws.send(status);
