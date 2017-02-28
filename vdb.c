@@ -56,6 +56,31 @@
 #define VDB_MAX_S32_VARIABLES 1024
 #define VDB_MAX_R32_VARIABLES 1024
 
+#define VDB_LABEL_LENGTH 16
+typedef struct
+{
+    char chars[VDB_LABEL_LENGTH+1];
+} vdb_label_t;
+
+int vdb_cmp_label(vdb_label_t *a, vdb_label_t *b)
+{
+    int i;
+    for (i = 0; i < VDB_LABEL_LENGTH; i++)
+        if (a->chars[i] != b->chars[i])
+            return 0;
+    return 1;
+}
+
+void vdb_copy_label(vdb_label_t *dst, const char *src)
+{
+    for (int i = 0; i < VDB_LABEL_LENGTH; i++)
+    {
+        if (src[i]) dst->chars[i] = src[i];
+        else        dst->chars[i] = ' ';
+    }
+    dst->chars[VDB_LABEL_LENGTH] = 0;
+}
+
 typedef struct
 {
     #ifdef VDB_WINDOWS
@@ -85,13 +110,10 @@ typedef struct
     char recv_buffer[VDB_RECV_BUFFER_SIZE];
 
     // These hold the latest state from the browser
-    uint64_t msg_var_r32_address[VDB_MAX_R32_VARIABLES];
-    float    msg_var_r32_value[VDB_MAX_R32_VARIABLES];
-    int      msg_var_r32_count;
-    // uint64_t msg_var_s32_address[VDB_MAX_S32_VARIABLES];
-    // int32_t  msg_var_s32_value[VDB_MAX_S32_VARIABLES];
-    // int      msg_var_s32_count;
-    int      msg_flag_continue;
+    vdb_label_t msg_var_r32_label[VDB_MAX_R32_VARIABLES];
+    float       msg_var_r32_value[VDB_MAX_R32_VARIABLES];
+    int         msg_var_r32_count;
+    int         msg_flag_continue;
     // float    app_mouse_x;
     // float    app_mouse_y;
 } vdb_shared_t;
@@ -182,44 +204,43 @@ int vdb_handle_message(vdb_msg_t msg)
     }
 
     // @ todo: mutex on latest message?
+    // status format:
+    // 's int char[16] float char[16] float ... char[16] float'
     if (msg.length > 1 && msg.payload[0] == 's') // status update
     {
-        char *ptr = msg.payload+1;
+        char *str = msg.payload;
+        int pos = 0 + 2;
+        int got = 0;
         {
-            int n;
-            int read_bytes;
-            if (sscanf(ptr, "%d%n", &n, &read_bytes) != 1)
-            {
-                vdb_err_once("Failed to read counter in status message\n");
-                return 0;
-            }
-            ptr += read_bytes;
+            int i = 0;
+            int num_vars;
+            vdb_assert(sscanf(str+pos, "%d%n", &num_vars, &got) == 1);
+            vdb_assert(num_vars >= 0 && num_vars < VDB_MAX_R32_VARIABLES);
+            if (num_vars == 0)
+                return 1;
 
-            if (n < 0 || n > VDB_MAX_R32_VARIABLES)
-            {
-                vdb_err_once("Unexpected number of float32 variables in status message\n");
-                return 0;
-            }
+            pos += got; // read past int
+            pos +=   1; // read past space
+            vdb_assert(pos < msg.length);
 
-            if (n >= 0 && n <= VDB_MAX_R32_VARIABLES)
+            for (i = 0; i < num_vars; i++)
             {
-                int i = 0;
-                for (i = 0; i < n; i++)
-                {
-                    uint32_t addr_low, addr_high; float value;
-                    if (sscanf(ptr, "%u %u %f%n", &addr_low, &addr_high, &value, &read_bytes) != 3)
-                    {
-                        vdb_err_once("Failed to read variable triplet in status message\n");
-                        return 0;
-                    }
-                    ptr += read_bytes;
+                vdb_label_t label = {0};
+                float value = 0.0f;
 
-                    uint64_t addr = ((uint64_t)addr_high << 32) | (uint64_t)addr_low;
-                    vs->msg_var_r32_address[i] = addr;
-                    vs->msg_var_r32_value[i] = value;
-                }
-                vs->msg_var_r32_count = n;
+                // read label
+                vdb_assert(pos + VDB_LABEL_LENGTH < msg.length);
+                vdb_copy_label(&label, str+pos);
+                pos += VDB_LABEL_LENGTH;
+
+                // read value
+                vdb_assert(sscanf(str+pos, "%f%n", &value, &got) == 1);
+                pos += got;
+
+                vs->msg_var_r32_label[i] = label;
+                vs->msg_var_r32_value[i] = value;
             }
+            vs->msg_var_r32_count = num_vars;
         }
     }
 
@@ -687,29 +708,33 @@ void vdb_imageRGB8(const void *data, int w, int h)
     vdb_push_bytes(data, w*h*3);
 }
 
-void vdb_slider1f(float *x, float min_value, float max_value)
+void vdb_slider1f(const char *in_label, float *x, float min_value, float max_value)
 {
-    uint64_t addr = (uint64_t)x;
+    vdb_label_t label = {0};
+    {
+        int i = 0;
+        for (i = 0; i < strlen(in_label) && i < VDB_LABEL_LENGTH; i++)
+            label.chars[i] = in_label[i];
+    }
+
     vdb_push_u08(vdb_mode_slider_float);
     vdb_push_style();
-    vdb_push_u32(addr & 0xFFFFFFFF); // low-bits
-    vdb_push_u32((addr >> 32) & 0xFFFFFFFF); // high-bits
+    vdb_push_bytes(label.chars, VDB_LABEL_LENGTH);
     vdb_push_r32(*x);
     vdb_push_r32(min_value);
     vdb_push_r32(max_value);
 
+    // Update variable
+    // @ todo: robustness: mutex on msg
     {
-        // Update variable
-        uint64_t *msg_addr = vdb_shared->msg_var_r32_address;
-        float *msg_value = vdb_shared->msg_var_r32_value;
-        int n = vdb_shared->msg_var_r32_count;
+        vdb_label_t *msg_label = vdb_shared->msg_var_r32_label;
+        float       *msg_value = vdb_shared->msg_var_r32_value;
+        int          msg_count = vdb_shared->msg_var_r32_count;
         int i = 0;
-        for (i = 0; i < n; i++)
+        for (i = 0; i < msg_count; i++)
         {
-            if (msg_addr[i] == addr)
-            {
+            if (vdb_cmp_label(&msg_label[i], &label))
                 *x = msg_value[i];
-            }
         }
     }
 }

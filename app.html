@@ -107,13 +107,12 @@ var nice_points = false;
 var connection_address = "localhost:8000";
 var alpha_value = 120;
 
-var modifiers_r32_lobits = [];
-var modifiers_r32_hibits = [];
-var modifiers_r32_min = [];
-var modifiers_r32_max = [];
-var modifiers_r32_value = [];
-var modifiers_r32_valid = [];
-var modifiers_r32_count = 0;
+var var_float32_label = [];
+var var_float32_value = [];
+var var_float32_valid = [];
+var var_float32_min = [];
+var var_float32_max = [];
+var var_float32_count = 0;
 
 function clamp(v, lo, hi)
 {
@@ -245,12 +244,12 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
-function parseSliderFloat(lobits, hibits, value, min_value, max_value)
+function parseSliderFloat(label, value, min_value, max_value)
 {
     var registered_i = -1;
-    for (var i = 0; i < modifiers_r32_count; i++)
+    for (var i = 0; i < var_float32_count; i++)
     {
-        if (modifiers_r32_lobits[i] == lobits && modifiers_r32_hibits[i] == hibits)
+        if (var_float32_label[i] === label)
         {
             registered_i = i;
             break;
@@ -259,31 +258,28 @@ function parseSliderFloat(lobits, hibits, value, min_value, max_value)
 
     if (registered_i < 0)
     {
-        registered_i = modifiers_r32_count;
-        console.log("Registered " + lobits + " " + hibits + " " + value);
-        modifiers_r32_lobits.push(lobits);
-        modifiers_r32_hibits.push(hibits);
-        modifiers_r32_min.push(min_value);
-        modifiers_r32_max.push(max_value);
-        modifiers_r32_value.push(value);
-        modifiers_r32_valid.push(true);
-        modifiers_r32_count++;
-
+        registered_i = var_float32_count;
+        var_float32_min.push(min_value);
+        var_float32_max.push(max_value);
+        var_float32_label.push(label);
+        var_float32_value.push(value);
+        var_float32_valid.push(true);
+        var_float32_count++;
         document.getElementById("mod1f_range").min = min_value;
         document.getElementById("mod1f_range").max = max_value;
         document.getElementById("mod1f_range").value = value;
-        document.getElementById("mod1f_label_name").innerHTML = "x: ";
+        document.getElementById("mod1f_label_name").innerHTML = label;
+        console.log("Registered " + label + " with initial value " + value);
     }
-
-    modifiers_r32_valid[registered_i] = true;
+    var_float32_valid[registered_i] = true;
 }
 
 function parseCommands(commands)
 {
     tex_view0_active = false;
-    for (var i = 0; i < modifiers_r32_count; i++)
+    for (var i = 0; i < var_float32_count; i++)
     {
-        modifiers_r32_valid[i] = false;
+        var_float32_valid[i] = false;
     }
 
     var coords = [];
@@ -385,12 +381,12 @@ function parseCommands(commands)
         }
         else if (mode == 254) // slider float
         {
-            var lobits = view.getUint32(offset, little_endian); offset += 4;
-            var hibits = view.getUint32(offset, little_endian); offset += 4;
+            var label = new Uint8Array(commands, offset, 16); offset += 16;
             var value = view.getFloat32(offset, little_endian); offset += 4;
             var min_value = view.getFloat32(offset, little_endian); offset += 4;
             var max_value = view.getFloat32(offset, little_endian); offset += 4;
-            parseSliderFloat(lobits, hibits, value, min_value, max_value);
+            var string = String.fromCharCode.apply(null, label);
+            parseSliderFloat(string, value, min_value, max_value);
         }
     }
 
@@ -400,18 +396,17 @@ function parseCommands(commands)
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.DYNAMIC_DRAW);
 
-    for (var i = 0; i < modifiers_r32_count; i++)
+    for (var i = 0; i < var_float32_count; i++)
     {
-        if (!modifiers_r32_valid[i])
+        if (!var_float32_valid[i])
         {
-            console.log("Removing " + i);
-            modifiers_r32_lobits.splice(i, 1);
-            modifiers_r32_hibits.splice(i, 1);
-            modifiers_r32_min.splice(i, 1);
-            modifiers_r32_max.splice(i, 1);
-            modifiers_r32_value.splice(i, 1);
-            modifiers_r32_valid.splice(i, 1);
-            modifiers_r32_count--;
+            console.log("Removing " + var_float32_label[i]);
+            var_float32_label.splice(i, 1);
+            var_float32_value.splice(i, 1);
+            var_float32_valid.splice(i, 1);
+            var_float32_min.splice(i, 1);
+            var_float32_max.splice(i, 1);
+            var_float32_count--;
             i--;
         }
     }
@@ -570,14 +565,13 @@ function anim(t)
 
         // todo: lookup id
         status = "s";
-        status = status + " " + modifiers_r32_count;
-        for (var i = 0; i < modifiers_r32_count; i++)
+        status = status + " " + var_float32_count;
+        for (var i = 0; i < var_float32_count; i++)
         {
-            lobits = modifiers_r32_lobits[i];
-            hibits = modifiers_r32_hibits[i];
-            value = modifiers_r32_value[i];
-            status = status + " " + lobits + " " + hibits + " " + value;
-            document.getElementById("mod1f_label_value").innerHTML = modifiers_r32_value[i].toPrecision(4);
+            label = var_float32_label[i];
+            value = var_float32_value[i];
+            status = status + " " + label + " " + value;
+            document.getElementById("mod1f_label_value").innerHTML = var_float32_value[i].toPrecision(4);
         }
         ws.send(status);
     }
@@ -689,7 +683,7 @@ function pageload()
 function mod1f_onchange(e)
 {
     // todo: check id, lookup etc
-    modifiers_r32_value[0] = parseFloat(e.value);
+    var_float32_value[0] = parseFloat(e.value);
 }
 
 function buttonConnect()
@@ -717,9 +711,9 @@ function buttonContinue()
             </div>
 
             <div class="input_thing">
-                <label id="mod1f_label_name"></label>
-                <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
                 <label id="mod1f_label_value"></label>
+                <input onchange="mod1f_onchange(this)" id="mod1f_range" min="0.0" max="1.0" step="0.01" value="0.5" type="range"/>
+                <label id="mod1f_label_name"></label>
             </div>
         </div>
 
