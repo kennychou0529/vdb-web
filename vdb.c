@@ -73,10 +73,16 @@ int vdb_cmp_label(vdb_label_t *a, vdb_label_t *b)
 
 void vdb_copy_label(vdb_label_t *dst, const char *src)
 {
-    for (int i = 0; i < VDB_LABEL_LENGTH; i++)
+    int i = 0;
+    while (i < VDB_LABEL_LENGTH && src[i])
     {
-        if (src[i]) dst->chars[i] = src[i];
-        else        dst->chars[i] = ' ';
+        dst->chars[i] = src[i];
+        i++;
+    }
+    while (i < VDB_LABEL_LENGTH)
+    {
+        dst->chars[i] = ' ';
+        i++;
     }
     dst->chars[VDB_LABEL_LENGTH] = 0;
 }
@@ -711,12 +717,7 @@ void vdb_imageRGB8(const void *data, int w, int h)
 void vdb_slider1f(const char *in_label, float *x, float min_value, float max_value)
 {
     vdb_label_t label = {0};
-    {
-        int i = 0;
-        for (i = 0; i < strlen(in_label) && i < VDB_LABEL_LENGTH; i++)
-            label.chars[i] = in_label[i];
-    }
-
+    vdb_copy_label(&label, in_label);
     vdb_push_u08(vdb_mode_slider_float);
     vdb_push_style();
     vdb_push_bytes(label.chars, VDB_LABEL_LENGTH);
