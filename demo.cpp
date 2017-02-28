@@ -85,7 +85,7 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    while (vdb_loop(1))
+    while (vdb_loop(60))
     {
         vdb_xrange(0, 32);
         vdb_yrange(-1.0f, +1.0f);

@@ -685,6 +685,7 @@ function htmlAddSliderFloat(label, min, max, step, value)
         e.setAttribute("step", step);
         e.setAttribute("value", value);
         e.setAttribute("onchange", "sliderFloatChanged(this)")
+        e.setAttribute("oninput", "sliderFloatChanged(this)")
         div.appendChild(e);
     }
 
