@@ -32,8 +32,8 @@ body {
 }
 
 #user_widgets { float: right; }
-#status { display: inline; color: #888; }
-#fps { display: inline; color: #888; }
+#status { display: inline; color: #888; vertical-align: middle; }
+#fps { display: inline; color: #888; vertical-align: middle; }
 
 .input_thing select { width: 100px; }
 .input_thing input { width: 100px; vertical-align: middle; padding: 0; margin: 0; margin-left: 4px; margin-right: 4px; }
@@ -589,7 +589,7 @@ function anim(t)
             e.setAttribute("onchange", "sliderChanged(this)")
             e.setAttribute("oninput", "sliderChanged(this)")
 
-            document.getElementById(label + "_label").innerHTML = label;
+            document.getElementById(label + "_label").innerHTML = label + " = ";
             if (parseInt(step) == step)
                 document.getElementById(label + "_value").innerHTML = value;
             else
@@ -699,17 +699,17 @@ function htmlAddUserInput(label)
     div.className = "input_thing";
     div.id = label + "_div";
 
-    // create label text
-    {
-        var e = document.createElement("label");
-        e.id = label + "_label";
-        div.appendChild(e);
-    }
-
     // create input
     {
         var e = document.createElement("input");
         e.id = label;
+        div.appendChild(e);
+    }
+
+    // create label text
+    {
+        var e = document.createElement("label");
+        e.id = label + "_label";
         div.appendChild(e);
     }
 
