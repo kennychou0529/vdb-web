@@ -104,6 +104,9 @@ var vdb_max_variables = 1024;
 var vdb_variables_label = new Array(vdb_max_variables);
 var vdb_variables_value = new Array(vdb_max_variables);
 var vdb_variables_valid = new Array(vdb_max_variables);
+var vdb_variables_min   = new Array(vdb_max_variables);
+var vdb_variables_max   = new Array(vdb_max_variables);
+var vdb_variables_step  = new Array(vdb_max_variables);
 var vdb_variables_used = 0;
 
 // User interface
@@ -262,29 +265,11 @@ function addUserVariable(label, value, min, max, step)
         vdb_variables_label[registered_i] = label;
         vdb_variables_valid[registered_i] = true;
         vdb_variables_value[registered_i] = value;
+        vdb_variables_min[registered_i] = min;
+        vdb_variables_max[registered_i] = max;
+        vdb_variables_step[registered_i] = step;
         vdb_variables_used++;
         htmlAddUserInput(label);
-        var e = document.getElementById(label);
-        if (parseInt(max-min) == 1)
-        {
-            e.setAttribute("type", "checkbox");
-            e.setAttribute("onchange", "checkboxChanged(this)")
-            e.setAttribute("oninput", "checkboxChanged(this)")
-            document.getElementById(label + "_label").innerHTML = label;
-            document.getElementById(label + "_value").innerHTML = "";
-        }
-        else
-        {
-            e.setAttribute("type", "range");
-            e.setAttribute("min", min);
-            e.setAttribute("max", max);
-            e.setAttribute("step", step);
-            e.setAttribute("value", value);
-            e.setAttribute("onchange", "sliderChanged(this)")
-            e.setAttribute("oninput", "sliderChanged(this)")
-            document.getElementById(label + "_label").innerHTML = label;
-            document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
-        }
         console.log("Registered " + label + " with initial value " + value);
     }
 }
@@ -421,6 +406,9 @@ function parseCommands(commands)
             vdb_variables_label[i] = vdb_variables_label[vdb_variables_used-1];
             vdb_variables_value[i] = vdb_variables_value[vdb_variables_used-1];
             vdb_variables_valid[i] = vdb_variables_valid[vdb_variables_used-1];
+            vdb_variables_min[i]   = vdb_variables_min[vdb_variables_used-1];
+            vdb_variables_max[i]   = vdb_variables_max[vdb_variables_used-1];
+            vdb_variables_step[i]  = vdb_variables_step[vdb_variables_used-1];
             vdb_variables_used--;
             i--;
         }
@@ -583,6 +571,28 @@ function anim(t)
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
 
+        for (var i = 0; i < vdb_variables_used; i++)
+        {
+            var label = vdb_variables_label[i];
+            var min = vdb_variables_min[i];
+            var max = vdb_variables_max[i];
+            var step = vdb_variables_step[i];
+            vdb_variables_value[i] = clamp(vdb_variables_value[i], min, max);
+            var value = vdb_variables_value[i];
+
+            var e = document.getElementById(label);
+            e.setAttribute("type", "range");
+            e.setAttribute("min", min);
+            e.setAttribute("max", max);
+            e.setAttribute("step", step);
+            e.setAttribute("value", value);
+            e.setAttribute("onchange", "sliderChanged(this)")
+            e.setAttribute("oninput", "sliderChanged(this)")
+
+            document.getElementById(label + "_label").innerHTML = label;
+            document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
+        }
+
         status = "s";
         status = status + " " + vdb_variables_used;
         for (var i = 0; i < vdb_variables_used; i++)
@@ -741,23 +751,8 @@ function pageload()
     anim();
 }
 
-function checkboxChanged(e)
-{
-    for (var i = 0; i < vdb_variables_used; i++)
-    {
-        if (e.id === vdb_variables_label[i])
-        {
-            if (e.checked)
-                vdb_variables_value[i] = 1.5;
-            else
-                vdb_variables_value[i] = 0.5;
-        }
-    }
-}
-
 function sliderChanged(e)
 {
-    document.getElementById(e.id + "_value").innerHTML = parseFloat(e.value).toPrecision(3);
     for (var i = 0; i < vdb_variables_used; i++)
         if (e.id === vdb_variables_label[i])
             vdb_variables_value[i] = parseFloat(e.value);
