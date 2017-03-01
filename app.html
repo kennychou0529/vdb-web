@@ -264,32 +264,28 @@ function addUserVariable(label, value, min, max, step)
         vdb_variables_value[registered_i] = value;
         vdb_variables_used++;
         htmlAddUserInput(label);
+        var e = document.getElementById(label);
+        if (parseInt(max-min) == 1)
+        {
+            e.setAttribute("type", "checkbox");
+            e.setAttribute("onchange", "checkboxChanged(this)")
+            e.setAttribute("oninput", "checkboxChanged(this)")
+            document.getElementById(label + "_label").innerHTML = label;
+            document.getElementById(label + "_value").innerHTML = "";
+        }
+        else
+        {
+            e.setAttribute("type", "range");
+            e.setAttribute("min", min);
+            e.setAttribute("max", max);
+            e.setAttribute("step", step);
+            e.setAttribute("value", value);
+            e.setAttribute("onchange", "sliderChanged(this)")
+            e.setAttribute("oninput", "sliderChanged(this)")
+            document.getElementById(label + "_label").innerHTML = label;
+            document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
+        }
         console.log("Registered " + label + " with initial value " + value);
-    }
-
-    // We always update slider properties, incase the min/max/step have changed
-    var e = document.getElementById(label);
-
-    if (parseInt(max-min) == 1)
-    {
-        e.setAttribute("onchange", "checkboxChanged(this)")
-        e.setAttribute("oninput", "checkboxChanged(this)")
-        document.getElementById(label + "_label").innerHTML = label;
-        document.getElementById(label + "_value").innerHTML = "";
-        e.type = "checkbox";
-    }
-    else
-    {
-        e.setAttribute("type", "range");
-        e.setAttribute("min", min);
-        e.setAttribute("max", max);
-        e.setAttribute("step", step);
-        e.setAttribute("value", value);
-        e.setAttribute("onchange", "sliderChanged(this)")
-        e.setAttribute("oninput", "sliderChanged(this)")
-        document.getElementById(label + "_label").innerHTML = label;
-        document.getElementById(label + "_value").innerHTML = value;
-        e.type = "range";
     }
 }
 
@@ -532,6 +528,12 @@ function connect()
                 cmd_data = null;
                 ws = null;
                 has_connection = false;
+
+                for (var i = 0; i < vdb_variables_used; i++)
+                {
+                    htmlRemoveUserInput(vdb_variables_label[i]);
+                }
+                vdb_variables_used = 0;
             }
 
             ws.onmessage = function(e)
@@ -741,8 +743,6 @@ function pageload()
 
 function checkboxChanged(e)
 {
-    document.getElementById(e.id + "_value").innerHTML = "";
-    document.getElementById(e.id + "_label").innerHTML = e.id; // @ truncate spaces
     for (var i = 0; i < vdb_variables_used; i++)
     {
         if (e.id === vdb_variables_label[i])
@@ -757,8 +757,7 @@ function checkboxChanged(e)
 
 function sliderChanged(e)
 {
-    document.getElementById(e.id + "_value").innerHTML = parseFloat(e.value).toPrecision(4);
-    document.getElementById(e.id + "_label").innerHTML = e.id; // @ truncate spaces
+    document.getElementById(e.id + "_value").innerHTML = parseFloat(e.value).toPrecision(3);
     for (var i = 0; i < vdb_variables_used; i++)
         if (e.id === vdb_variables_label[i])
             vdb_variables_value[i] = parseFloat(e.value);

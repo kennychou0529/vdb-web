@@ -85,19 +85,28 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    while (vdb_loop(60))
+    while (vdb_loop(2))
     {
+        static int more_lines = 0;
+
         vdb_xrange(0, 32);
         vdb_yrange(-1.0f, +1.0f);
         for (int i = 0; i < 32; i++)
         {
             vdb_color_ramp(i);
             vdb_line(i+0.5f, -1.0f, i+0.5f, +1.0f);
+
+            if (more_lines)
+            {
+                vdb_line(0, -1.0f+2.0f*i/32.0f, 32, -1.0f+2.0f*i/32.0f);
+            }
         }
 
-        static int x = 0;
+        vdb_checkbox("More lines", &more_lines);
+
         static float y = 0.0f;
-        vdb_slider1i("x", &x, 0, 1);
+        static int x = 0;
+        vdb_slider1i("x", &x, 0, 32);
         vdb_slider1f("y", &y, -1.0f, +1.0f);
         vdb_point((float)x, y);
     }

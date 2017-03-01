@@ -759,3 +759,8 @@ void vdb_slider1i(const char *in_label, int *x, int min_value, int max_value)
             *x = (int)vdb_shared->msg_var_value[i];
     }
 }
+
+void vdb_checkbox(const char *in_label, int *x)
+{
+    vdb_slider1i(in_label, x, 0, 1);
+}
