@@ -243,7 +243,7 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
-function addSlider(label, value, min, max, step)
+function addUserVariable(label, value, min, max, step)
 {
     var registered_i = -1;
     for (var i = 0; i < vdb_variables_used; i++)
@@ -263,15 +263,34 @@ function addSlider(label, value, min, max, step)
         vdb_variables_valid[registered_i] = true;
         vdb_variables_value[registered_i] = value;
         vdb_variables_used++;
-        htmlAddSlider(label, min, max, step, value);
+        htmlAddUserInput(label);
         console.log("Registered " + label + " with initial value " + value);
     }
 
     // We always update slider properties, incase the min/max/step have changed
     var e = document.getElementById(label);
-    e.setAttribute("step", step);
-    e.setAttribute("min", min);
-    e.setAttribute("max", max);
+
+    if (parseInt(max-min) == 1)
+    {
+        e.setAttribute("onchange", "checkboxChanged(this)")
+        e.setAttribute("oninput", "checkboxChanged(this)")
+        document.getElementById(label + "_label").innerHTML = label;
+        document.getElementById(label + "_value").innerHTML = "";
+        e.type = "checkbox";
+    }
+    else
+    {
+        e.setAttribute("type", "range");
+        e.setAttribute("min", min);
+        e.setAttribute("max", max);
+        e.setAttribute("step", step);
+        e.setAttribute("value", value);
+        e.setAttribute("onchange", "sliderChanged(this)")
+        e.setAttribute("oninput", "sliderChanged(this)")
+        document.getElementById(label + "_label").innerHTML = label;
+        document.getElementById(label + "_value").innerHTML = value;
+        e.type = "range";
+    }
 }
 
 function parseCommands(commands)
@@ -385,7 +404,7 @@ function parseCommands(commands)
             var max   = view.getFloat32(offset, little_endian); offset += 4;
             var step  = view.getFloat32(offset, little_endian); offset += 4;
             var string = String.fromCharCode.apply(null, label);
-            addSlider(string, value, min, max, step);
+            addUserVariable(string, value, min, max, step);
         }
     }
 
@@ -400,7 +419,7 @@ function parseCommands(commands)
         if (!vdb_variables_valid[i])
         {
             console.log("Removing " + vdb_variables_label[i]);
-            htmlRemoveWidget(vdb_variables_label[i]);
+            htmlRemoveUserInput(vdb_variables_label[i]);
 
             // remove by swapping last element into i and decrementing count
             vdb_variables_label[i] = vdb_variables_label[vdb_variables_used-1];
@@ -562,12 +581,6 @@ function anim(t)
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
 
-        for (var i = 0; i < vdb_variables_used; i++)
-        {
-            document.getElementById(vdb_variables_label[i] + "_value").innerHTML = vdb_variables_value[i].toPrecision(4);
-            document.getElementById(vdb_variables_label[i] + "_label").innerHTML = vdb_variables_label[i]; // @ truncate spaces
-        }
-
         status = "s";
         status = status + " " + vdb_variables_used;
         for (var i = 0; i < vdb_variables_used; i++)
@@ -662,9 +675,9 @@ function init()
 // Adds the following to the user widget section
 // div: id = label
 //   label: id = label + "_value"
-//   input: id = label + "_input", type="range"
+//   input: id = label + "_input"
 //   label: id = label + "_label"
-function htmlAddSlider(label, min, max, step, value)
+function htmlAddUserInput(label)
 {
     var div = document.createElement("div");
     div.className = "input_thing";
@@ -677,17 +690,10 @@ function htmlAddSlider(label, min, max, step, value)
         div.appendChild(e);
     }
 
-    // create slider input
+    // create input
     {
         var e = document.createElement("input");
         e.id = label;
-        e.setAttribute("type", "range");
-        e.setAttribute("min", min);
-        e.setAttribute("max", max);
-        e.setAttribute("step", step);
-        e.setAttribute("value", value);
-        e.setAttribute("onchange", "sliderChanged(this)")
-        e.setAttribute("oninput", "sliderChanged(this)")
         div.appendChild(e);
     }
 
@@ -702,7 +708,7 @@ function htmlAddSlider(label, min, max, step, value)
     user.appendChild(div);
 }
 
-function htmlRemoveWidget(label)
+function htmlRemoveUserInput(label)
 {
     var user = document.getElementById("user_widgets");
     var item = document.getElementById(label + "_div");
@@ -733,8 +739,26 @@ function pageload()
     anim();
 }
 
+function checkboxChanged(e)
+{
+    document.getElementById(e.id + "_value").innerHTML = "";
+    document.getElementById(e.id + "_label").innerHTML = e.id; // @ truncate spaces
+    for (var i = 0; i < vdb_variables_used; i++)
+    {
+        if (e.id === vdb_variables_label[i])
+        {
+            if (e.checked)
+                vdb_variables_value[i] = 1.5;
+            else
+                vdb_variables_value[i] = 0.5;
+        }
+    }
+}
+
 function sliderChanged(e)
 {
+    document.getElementById(e.id + "_value").innerHTML = parseFloat(e.value).toPrecision(4);
+    document.getElementById(e.id + "_label").innerHTML = e.id; // @ truncate spaces
     for (var i = 0; i < vdb_variables_used; i++)
         if (e.id === vdb_variables_label[i])
             vdb_variables_value[i] = parseFloat(e.value);

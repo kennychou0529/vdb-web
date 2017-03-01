@@ -97,7 +97,7 @@ int main()
 
         static int x = 0;
         static float y = 0.0f;
-        vdb_slider1i("x", &x, 0, 32);
+        vdb_slider1i("x", &x, 0, 1);
         vdb_slider1f("y", &y, -1.0f, +1.0f);
         vdb_point((float)x, y);
     }
