@@ -733,7 +733,12 @@ void vdb_slider1f(const char *in_label, float *x, float min_value, float max_val
     for (i = 0; i < vdb_shared->msg_var_count; i++)
     {
         if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
-            *x = vdb_shared->msg_var_value[i];
+        {
+            float v = vdb_shared->msg_var_value[i];
+            if (v < min_value) v = min_value;
+            if (v > max_value) v = max_value;
+            *x = v;
+        }
     }
 }
 
@@ -755,7 +760,12 @@ void vdb_slider1i(const char *in_label, int *x, int min_value, int max_value)
     for (i = 0; i < vdb_shared->msg_var_count; i++)
     {
         if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
-            *x = (int)vdb_shared->msg_var_value[i];
+        {
+            int v = (int)vdb_shared->msg_var_value[i];
+            if (v < min_value) v = min_value;
+            if (v > max_value) v = max_value;
+            *x = v;
+        }
     }
 }
 
