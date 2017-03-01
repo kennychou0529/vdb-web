@@ -590,7 +590,11 @@ function anim(t)
             e.setAttribute("oninput", "sliderChanged(this)")
 
             document.getElementById(label + "_label").innerHTML = label;
-            document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
+            if (parseInt(step) == step)
+                document.getElementById(label + "_value").innerHTML = value;
+            else
+                document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
+
         }
 
         status = "s";
