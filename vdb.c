@@ -559,7 +559,7 @@ int vdb_loop(int fps)
 #define vdb_mode_fill_rect      5
 #define vdb_mode_circle         6
 #define vdb_mode_image_rgb8     7
-#define vdb_mode_slider_float   254
+#define vdb_mode_slider         254
 
 static unsigned char vdb_current_color_mode = 0;
 static unsigned char vdb_current_color = 0;
@@ -718,23 +718,44 @@ void vdb_imageRGB8(const void *data, int w, int h)
 
 void vdb_slider1f(const char *in_label, float *x, float min_value, float max_value)
 {
+    int i = 0;
     vdb_label_t label = {0};
     vdb_copy_label(&label, in_label);
-    vdb_push_u08(vdb_mode_slider_float);
+    vdb_push_u08(vdb_mode_slider);
     vdb_push_style();
     vdb_push_bytes(label.chars, VDB_LABEL_LENGTH);
     vdb_push_r32(*x);
     vdb_push_r32(min_value);
     vdb_push_r32(max_value);
+    vdb_push_r32(0.01f);
 
     // Update variable
     // @ ROBUSTNESS @ RACE CONDITION: Mutex on latest message
+    for (i = 0; i < vdb_shared->msg_var_count; i++)
     {
-        int i = 0;
-        for (i = 0; i < vdb_shared->msg_var_count; i++)
-        {
-            if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
-                *x = vdb_shared->msg_var_value[i];
-        }
+        if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
+            *x = vdb_shared->msg_var_value[i];
+    }
+}
+
+void vdb_slider1i(const char *in_label, int *x, int min_value, int max_value)
+{
+    int i = 0;
+    vdb_label_t label = {0};
+    vdb_copy_label(&label, in_label);
+    vdb_push_u08(vdb_mode_slider);
+    vdb_push_style();
+    vdb_push_bytes(label.chars, VDB_LABEL_LENGTH);
+    vdb_push_r32((float)*x);
+    vdb_push_r32((float)min_value);
+    vdb_push_r32((float)max_value);
+    vdb_push_r32(1.0f);
+
+    // Update variable
+    // @ ROBUSTNESS @ RACE CONDITION: Mutex on latest message
+    for (i = 0; i < vdb_shared->msg_var_count; i++)
+    {
+        if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
+            *x = (int)vdb_shared->msg_var_value[i];
     }
 }

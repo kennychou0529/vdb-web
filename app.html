@@ -104,8 +104,6 @@ var vdb_max_variables = 1024;
 var vdb_variables_label = new Array(vdb_max_variables);
 var vdb_variables_value = new Array(vdb_max_variables);
 var vdb_variables_valid = new Array(vdb_max_variables);
-var vdb_variables_min   = new Array(vdb_max_variables);
-var vdb_variables_max   = new Array(vdb_max_variables);
 var vdb_variables_used = 0;
 
 // User interface
@@ -245,7 +243,7 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
-function addSliderFloat(label, value, min_value, max_value)
+function addSlider(label, value, min, max, step)
 {
     var registered_i = -1;
     for (var i = 0; i < vdb_variables_used; i++)
@@ -264,12 +262,16 @@ function addSliderFloat(label, value, min_value, max_value)
         vdb_variables_label[registered_i] = label;
         vdb_variables_valid[registered_i] = true;
         vdb_variables_value[registered_i] = value;
-        vdb_variables_min[registered_i] = min_value;
-        vdb_variables_max[registered_i] = max_value;
         vdb_variables_used++;
-        htmlAddSliderFloat(label, min_value, max_value, 0.01, value);
+        htmlAddSlider(label, min, max, step, value);
         console.log("Registered " + label + " with initial value " + value);
     }
+
+    // We always update slider properties, incase the min/max/step have changed
+    var e = document.getElementById(label);
+    e.setAttribute("step", step);
+    e.setAttribute("min", min);
+    e.setAttribute("max", max);
 }
 
 function parseCommands(commands)
@@ -375,14 +377,15 @@ function parseCommands(commands)
             tex_view0_active = true;
             data = null;
         }
-        else if (mode == 254) // slider float
+        else if (mode == 254) // slider (both int and float)
         {
             var label = new Uint8Array(commands, offset, 16); offset += 16;
             var value = view.getFloat32(offset, little_endian); offset += 4;
-            var min_value = view.getFloat32(offset, little_endian); offset += 4;
-            var max_value = view.getFloat32(offset, little_endian); offset += 4;
+            var min   = view.getFloat32(offset, little_endian); offset += 4;
+            var max   = view.getFloat32(offset, little_endian); offset += 4;
+            var step  = view.getFloat32(offset, little_endian); offset += 4;
             var string = String.fromCharCode.apply(null, label);
-            addSliderFloat(string, value, min_value, max_value);
+            addSlider(string, value, min, max, step);
         }
     }
 
@@ -403,8 +406,6 @@ function parseCommands(commands)
             vdb_variables_label[i] = vdb_variables_label[vdb_variables_used-1];
             vdb_variables_value[i] = vdb_variables_value[vdb_variables_used-1];
             vdb_variables_valid[i] = vdb_variables_valid[vdb_variables_used-1];
-            vdb_variables_min[i] = vdb_variables_min[vdb_variables_used-1];
-            vdb_variables_max[i] = vdb_variables_max[vdb_variables_used-1];
             vdb_variables_used--;
             i--;
         }
@@ -663,7 +664,7 @@ function init()
 //   label: id = label + "_value"
 //   input: id = label + "_input", type="range"
 //   label: id = label + "_label"
-function htmlAddSliderFloat(label, min, max, step, value)
+function htmlAddSlider(label, min, max, step, value)
 {
     var div = document.createElement("div");
     div.className = "input_thing";
@@ -685,8 +686,8 @@ function htmlAddSliderFloat(label, min, max, step, value)
         e.setAttribute("max", max);
         e.setAttribute("step", step);
         e.setAttribute("value", value);
-        e.setAttribute("onchange", "sliderFloatChanged(this)")
-        e.setAttribute("oninput", "sliderFloatChanged(this)")
+        e.setAttribute("onchange", "sliderChanged(this)")
+        e.setAttribute("oninput", "sliderChanged(this)")
         div.appendChild(e);
     }
 
@@ -732,7 +733,7 @@ function pageload()
     anim();
 }
 
-function sliderFloatChanged(e)
+function sliderChanged(e)
 {
     for (var i = 0; i < vdb_variables_used; i++)
         if (e.id === vdb_variables_label[i])

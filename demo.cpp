@@ -95,11 +95,11 @@ int main()
             vdb_line(i+0.5f, -1.0f, i+0.5f, +1.0f);
         }
 
-        static float x = 0.0f;
+        static int x = 0;
         static float y = 0.0f;
-        vdb_slider1f("x", &x, 1.0f, 32.0f);
+        vdb_slider1i("x", &x, 0, 32);
         vdb_slider1f("y", &y, -1.0f, +1.0f);
-        vdb_point(x, y);
+        vdb_point((float)x, y);
     }
 
     // while (vdb_loop(30))
