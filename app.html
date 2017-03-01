@@ -100,14 +100,20 @@ var tex_view0_active = false;
 var tex_view0_width = 0;
 var tex_view0_height = 0;
 
+var vdb_max_variables = 1024;
+var vdb_variables_label = new Array(vdb_max_variables);
+var vdb_variables_value = new Array(vdb_max_variables);
+var vdb_variables_valid = new Array(vdb_max_variables);
+var vdb_variables_min   = new Array(vdb_max_variables);
+var vdb_variables_max   = new Array(vdb_max_variables);
+var vdb_variables_used = 0;
+
 // User interface
-var line_width = 4.0;   // in pixels
-var point_radius = 4.0; // in pixels
+var line_width = 4.0;
+var point_radius = 4.0;
 var nice_points = false;
 var connection_address = "localhost:8000";
 var alpha_value = 120;
-
-var var_r32 = [];
 
 function clamp(v, lo, hi)
 {
@@ -239,29 +245,28 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
     return n*3;
 }
 
-function parseSliderFloat(label, value, min_value, max_value)
+function addSliderFloat(label, value, min_value, max_value)
 {
     var registered_i = -1;
-    for (var i = 0; i < var_r32.length; i++)
+    for (var i = 0; i < vdb_variables_used; i++)
     {
-        if (var_r32[i].label === label)
+        if (vdb_variables_label[i] === label)
         {
-            var_r32[i].valid = true;
+            vdb_variables_valid[i] = true;
             registered_i = i;
             break;
         }
     }
 
-    if (registered_i < 0)
+    if (registered_i < 0 && vdb_variables_used < vdb_max_variables)
     {
-        registered_i = var_r32.count;
-        var r32 = {};
-        r32.min = min_value;
-        r32.max = max_value;
-        r32.label = label;
-        r32.value = value;
-        r32.valid = true;
-        var_r32.push(r32);
+        registered_i = vdb_variables_used;
+        vdb_variables_label[registered_i] = label;
+        vdb_variables_valid[registered_i] = true;
+        vdb_variables_value[registered_i] = value;
+        vdb_variables_min[registered_i] = min_value;
+        vdb_variables_max[registered_i] = max_value;
+        vdb_variables_used++;
         htmlAddSliderFloat(label, min_value, max_value, 0.01, value);
         console.log("Registered " + label + " with initial value " + value);
     }
@@ -270,10 +275,8 @@ function parseSliderFloat(label, value, min_value, max_value)
 function parseCommands(commands)
 {
     tex_view0_active = false;
-    for (var i = 0; i < var_r32.length; i++)
-    {
-        var_r32[i].valid = false;
-    }
+    for (var i = 0; i < vdb_variables_used; i++)
+        vdb_variables_valid[i] = false;
 
     var coords = [];
     var colors = [];
@@ -379,7 +382,7 @@ function parseCommands(commands)
             var min_value = view.getFloat32(offset, little_endian); offset += 4;
             var max_value = view.getFloat32(offset, little_endian); offset += 4;
             var string = String.fromCharCode.apply(null, label);
-            parseSliderFloat(string, value, min_value, max_value);
+            addSliderFloat(string, value, min_value, max_value);
         }
     }
 
@@ -389,13 +392,20 @@ function parseCommands(commands)
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.DYNAMIC_DRAW);
 
-    for (var i = 0; i < var_r32.length; i++)
+    for (var i = 0; i < vdb_variables_used; i++)
     {
-        if (!var_r32[i].valid)
+        if (!vdb_variables_valid[i])
         {
-            console.log("Removing " + var_r32[i].label);
-            htmlRemoveWidget(var_r32[i].label);
-            var_r32.splice(i, 1);
+            console.log("Removing " + vdb_variables_label[i]);
+            htmlRemoveWidget(vdb_variables_label[i]);
+
+            // remove by swapping last element into i and decrementing count
+            vdb_variables_label[i] = vdb_variables_label[vdb_variables_used-1];
+            vdb_variables_value[i] = vdb_variables_value[vdb_variables_used-1];
+            vdb_variables_valid[i] = vdb_variables_valid[vdb_variables_used-1];
+            vdb_variables_min[i] = vdb_variables_min[vdb_variables_used-1];
+            vdb_variables_max[i] = vdb_variables_max[vdb_variables_used-1];
+            vdb_variables_used--;
             i--;
         }
     }
@@ -551,18 +561,18 @@ function anim(t)
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
 
-        for (var i = 0; i < var_r32.length; i++)
+        for (var i = 0; i < vdb_variables_used; i++)
         {
-            document.getElementById(var_r32[i].label + "_value").innerHTML = var_r32[i].value.toPrecision(4);
-            document.getElementById(var_r32[i].label + "_label").innerHTML = var_r32[i].label; // @ truncate spaces
+            document.getElementById(vdb_variables_label[i] + "_value").innerHTML = vdb_variables_value[i].toPrecision(4);
+            document.getElementById(vdb_variables_label[i] + "_label").innerHTML = vdb_variables_label[i]; // @ truncate spaces
         }
 
         status = "s";
-        status = status + " " + var_r32.length;
-        for (var i = 0; i < var_r32.length; i++)
+        status = status + " " + vdb_variables_used;
+        for (var i = 0; i < vdb_variables_used; i++)
         {
-            label = var_r32[i].label;
-            value = var_r32[i].value;
+            var label = vdb_variables_label[i];
+            var value = vdb_variables_value[i];
             status = status + " " + label + " " + value;
         }
         ws.send(status);
@@ -724,13 +734,9 @@ function pageload()
 
 function sliderFloatChanged(e)
 {
-    for (var i = 0; i < var_r32.length; i++)
-    {
-        if (e.id === var_r32[i].label)
-        {
-            var_r32[i].value = parseFloat(e.value);
-        }
-    }
+    for (var i = 0; i < vdb_variables_used; i++)
+        if (e.id === vdb_variables_label[i])
+            vdb_variables_value[i] = parseFloat(e.value);
 }
 
 function buttonConnect()

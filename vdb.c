@@ -53,9 +53,7 @@
 #define VDB_USING_DEFAULT_LISTEN_PORT
 #endif
 
-#define VDB_MAX_S32_VARIABLES 1024
-#define VDB_MAX_R32_VARIABLES 1024
-
+#define VDB_MAX_VAR_COUNT 1024
 #define VDB_LABEL_LENGTH 16
 typedef struct
 {
@@ -116,9 +114,9 @@ typedef struct
     char recv_buffer[VDB_RECV_BUFFER_SIZE];
 
     // These hold the latest state from the browser
-    vdb_label_t msg_var_r32_label[VDB_MAX_R32_VARIABLES];
-    float       msg_var_r32_value[VDB_MAX_R32_VARIABLES];
-    int         msg_var_r32_count;
+    vdb_label_t msg_var_label[VDB_MAX_VAR_COUNT];
+    float       msg_var_value[VDB_MAX_VAR_COUNT];
+    int         msg_var_count;
     int         msg_flag_continue;
     // float    app_mouse_x;
     // float    app_mouse_y;
@@ -203,53 +201,56 @@ int vdb_handle_message(vdb_msg_t msg)
     // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
     vdb_shared_t *vs = vdb_shared;
 
-    if (msg.length == 1 && msg.payload[0] == 'c') // asynchronous 'continue' event
+    // This means the user pressed the 'continue' button
+    if (msg.length == 1 && msg.payload[0] == 'c')
     {
         vs->msg_flag_continue = 1;
         return 1;
     }
 
-    // @ todo: mutex on latest message?
-    // status format:
-    // 's int char[16] float char[16] float ... char[16] float'
-    if (msg.length > 1 && msg.payload[0] == 's') // status update
+    // This is a status update that is sent at regular intervals
+    if (msg.length > 1 && msg.payload[0] == 's')
     {
         char *str = msg.payload;
         int pos = 0 + 2;
         int got = 0;
+        int i;
+        int n;
+
+        // read 'number of variables'
+        vdb_assert(sscanf(str+pos, "%d%n", &n, &got) == 1);
+        vdb_assert(n >= 0 && n < VDB_MAX_VAR_COUNT);
+
+        // if there are no variables we are done!
+        if (n == 0)
+            return 1;
+
+        pos += got+1; // read past int and space
+        vdb_assert(pos < msg.length);
+
+        // @ ROBUSTNESS @ RACE CONDITION: Should write to a seperate buffer
+        // and swap when we are done, and also ensure mutex. As it stands
+        // now we will be reading concurrently as we write to this array,
+        // without any locking!
+        for (i = 0; i < n; i++)
         {
-            int i = 0;
-            int num_vars;
-            vdb_assert(sscanf(str+pos, "%d%n", &num_vars, &got) == 1);
-            vdb_assert(num_vars >= 0 && num_vars < VDB_MAX_R32_VARIABLES);
-            if (num_vars == 0)
-                return 1;
+            vdb_label_t label;
+            float value;
 
-            pos += got; // read past int
-            pos +=   1; // read past space
-            vdb_assert(pos < msg.length);
+            // read label
+            vdb_assert(pos + VDB_LABEL_LENGTH < msg.length);
+            vdb_copy_label(&label, str+pos);
+            pos += VDB_LABEL_LENGTH;
 
-            for (i = 0; i < num_vars; i++)
-            {
-                vdb_label_t label = {0};
-                float value = 0.0f;
+            // read value
+            vdb_assert(sscanf(str+pos, "%f%n", &value, &got) == 1);
+            pos += got+1; // read past float and space
 
-                // read label
-                vdb_assert(pos + VDB_LABEL_LENGTH < msg.length);
-                vdb_copy_label(&label, str+pos);
-                pos += VDB_LABEL_LENGTH;
-
-                // read value
-                vdb_assert(sscanf(str+pos, "%f%n", &value, &got) == 1);
-
-                pos += got; // read past float
-                pos +=   1; // read past space
-
-                vs->msg_var_r32_label[i] = label;
-                vs->msg_var_r32_value[i] = value;
-            }
-            vs->msg_var_r32_count = num_vars;
+            // update variable @ ROBUSTNESS @ RACE CONDITION
+            vs->msg_var_label[i] = label;
+            vs->msg_var_value[i] = value;
         }
+        vs->msg_var_count = n;
     }
 
     return 1;
@@ -727,16 +728,13 @@ void vdb_slider1f(const char *in_label, float *x, float min_value, float max_val
     vdb_push_r32(max_value);
 
     // Update variable
-    // @ todo: robustness: mutex on msg
+    // @ ROBUSTNESS @ RACE CONDITION: Mutex on latest message
     {
-        vdb_label_t *msg_label = vdb_shared->msg_var_r32_label;
-        float       *msg_value = vdb_shared->msg_var_r32_value;
-        int          msg_count = vdb_shared->msg_var_r32_count;
         int i = 0;
-        for (i = 0; i < msg_count; i++)
+        for (i = 0; i < vdb_shared->msg_var_count; i++)
         {
-            if (vdb_cmp_label(&msg_label[i], &label))
-                *x = msg_value[i];
+            if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
+                *x = vdb_shared->msg_var_value[i];
         }
     }
 }

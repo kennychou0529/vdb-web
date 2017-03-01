@@ -7,21 +7,8 @@ o live fisheye calibration
 o v4l2/ffmpeg camera input
 
 vdb:
-o collect messages and go through in vdb_begin
-    variable modification must occur from main thread/pid!!!
-    Browser sends status updates at 20 Hz or so
-        Registered variables and their values
-        Cursor position
-        Filtered views
-    Browser sends asynchronous events when they occur
-        Continue button
-    Browser updates variable register after each vdb_end
-        for each registered variables
-            if not in received variables
-                remove?
-        for each received variable
-            if not in registered variables
-                add?
+o mutex on latest message
+o slider1i represent large integers with float
 o _beginthread and _endthread instead of CreateThread
 o NOMINMAX
 o #undef near/far
