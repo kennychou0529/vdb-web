@@ -253,7 +253,6 @@ function addUserVariable(label, value, min, max, step)
     {
         if (vdb_variables_label[i] === label)
         {
-            vdb_variables_valid[i] = true;
             registered_i = i;
             break;
         }
@@ -263,15 +262,16 @@ function addUserVariable(label, value, min, max, step)
     {
         registered_i = vdb_variables_used;
         vdb_variables_label[registered_i] = label;
-        vdb_variables_valid[registered_i] = true;
         vdb_variables_value[registered_i] = value;
-        vdb_variables_min[registered_i] = min;
-        vdb_variables_max[registered_i] = max;
-        vdb_variables_step[registered_i] = step;
         vdb_variables_used++;
         htmlAddUserInput(label);
         console.log("Registered " + label + " with initial value " + value);
     }
+
+    vdb_variables_valid[registered_i] = true;
+    vdb_variables_min[registered_i] = min;
+    vdb_variables_max[registered_i] = max;
+    vdb_variables_step[registered_i] = step;
 }
 
 function parseCommands(commands)
