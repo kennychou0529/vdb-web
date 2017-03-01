@@ -107,12 +107,7 @@ var nice_points = false;
 var connection_address = "localhost:8000";
 var alpha_value = 120;
 
-var var_float32_label = [];
-var var_float32_value = [];
-var var_float32_valid = [];
-var var_float32_min = [];
-var var_float32_max = [];
-var var_float32_count = 0;
+var var_r32 = [];
 
 function clamp(v, lo, hi)
 {
@@ -247,10 +242,11 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
 function parseSliderFloat(label, value, min_value, max_value)
 {
     var registered_i = -1;
-    for (var i = 0; i < var_float32_count; i++)
+    for (var i = 0; i < var_r32.length; i++)
     {
-        if (var_float32_label[i] === label)
+        if (var_r32[i].label === label)
         {
+            var_r32[i].valid = true;
             registered_i = i;
             break;
         }
@@ -258,25 +254,25 @@ function parseSliderFloat(label, value, min_value, max_value)
 
     if (registered_i < 0)
     {
-        registered_i = var_float32_count;
-        var_float32_min.push(min_value);
-        var_float32_max.push(max_value);
-        var_float32_label.push(label);
-        var_float32_value.push(value);
-        var_float32_valid.push(true);
-        var_float32_count++;
+        registered_i = var_r32.count;
+        var r32 = {};
+        r32.min = min_value;
+        r32.max = max_value;
+        r32.label = label;
+        r32.value = value;
+        r32.valid = true;
+        var_r32.push(r32);
         htmlAddSliderFloat(label, min_value, max_value, 0.01, value);
         console.log("Registered " + label + " with initial value " + value);
     }
-    var_float32_valid[registered_i] = true;
 }
 
 function parseCommands(commands)
 {
     tex_view0_active = false;
-    for (var i = 0; i < var_float32_count; i++)
+    for (var i = 0; i < var_r32.length; i++)
     {
-        var_float32_valid[i] = false;
+        var_r32[i].valid = false;
     }
 
     var coords = [];
@@ -393,18 +389,13 @@ function parseCommands(commands)
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo_user_color);
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(colors), gl.DYNAMIC_DRAW);
 
-    for (var i = 0; i < var_float32_count; i++)
+    for (var i = 0; i < var_r32.length; i++)
     {
-        if (!var_float32_valid[i])
+        if (!var_r32[i].valid)
         {
-            console.log("Removing " + var_float32_label[i]);
-            htmlRemoveWidget(var_float32_label[i]);
-            var_float32_label.splice(i, 1);
-            var_float32_value.splice(i, 1);
-            var_float32_valid.splice(i, 1);
-            var_float32_min.splice(i, 1);
-            var_float32_max.splice(i, 1);
-            var_float32_count--;
+            console.log("Removing " + var_r32[i].label);
+            htmlRemoveWidget(var_r32[i].label);
+            var_r32.splice(i, 1);
             i--;
         }
     }
@@ -560,18 +551,18 @@ function anim(t)
         nice_points = document.getElementById("nice_points").checked;
         stats_bps_dt += delta;
 
-        for (var i = 0; i < var_float32_count; i++)
+        for (var i = 0; i < var_r32.length; i++)
         {
-            document.getElementById(var_float32_label[i] + "_value").innerHTML = var_float32_value[i].toPrecision(4);
-            document.getElementById(var_float32_label[i] + "_label").innerHTML = var_float32_label[i]; // @ truncate spaces
+            document.getElementById(var_r32[i].label + "_value").innerHTML = var_r32[i].value.toPrecision(4);
+            document.getElementById(var_r32[i].label + "_label").innerHTML = var_r32[i].label; // @ truncate spaces
         }
 
         status = "s";
-        status = status + " " + var_float32_count;
-        for (var i = 0; i < var_float32_count; i++)
+        status = status + " " + var_r32.length;
+        for (var i = 0; i < var_r32.length; i++)
         {
-            label = var_float32_label[i];
-            value = var_float32_value[i];
+            label = var_r32[i].label;
+            value = var_r32[i].value;
             status = status + " " + label + " " + value;
         }
         ws.send(status);
@@ -733,11 +724,11 @@ function pageload()
 
 function sliderFloatChanged(e)
 {
-    for (var i = 0; i < var_float32_count; i++)
+    for (var i = 0; i < var_r32.length; i++)
     {
-        if (e.id === var_float32_label[i])
+        if (e.id === var_r32[i].label)
         {
-            var_float32_value[i] = parseFloat(e.value);
+            var_r32[i].value = parseFloat(e.value);
         }
     }
 }
