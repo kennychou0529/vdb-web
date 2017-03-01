@@ -55,14 +55,14 @@ void draw_cool_spinny_thing(float dt)
 
         vdb_color_red(1);
 
-        vdb_line(r1*cosf(a1), r1*sinf(a1), r2*cosf(a2), r2*sinf(a2));
-        vdb_line(r1*cosf(a1), r1*sinf(a1), r3*cosf(a3), r3*sinf(a3));
-        vdb_line(r2*cosf(a2), r2*sinf(a2), r3*cosf(a3), r3*sinf(a3));
+        vdb_line(0.5f*r1*cosf(a1), r1*sinf(a1), 0.5f*r2*cosf(a2), r2*sinf(a2));
+        vdb_line(0.5f*r1*cosf(a1), r1*sinf(a1), 0.5f*r3*cosf(a3), r3*sinf(a3));
+        vdb_line(0.5f*r2*cosf(a2), r2*sinf(a2), 0.5f*r3*cosf(a3), r3*sinf(a3));
 
         vdb_color_red(2);
-        vdb_point(r1*cosf(a1), r1*sinf(a1));
-        vdb_point(r2*cosf(a2), r2*sinf(a2));
-        vdb_point(r3*cosf(a3), r3*sinf(a3));
+        vdb_point(0.5f*r1*cosf(a1), r1*sinf(a1));
+        vdb_point(0.5f*r2*cosf(a2), r2*sinf(a2));
+        vdb_point(0.5f*r3*cosf(a3), r3*sinf(a3));
     }
 
     #endif
@@ -85,7 +85,7 @@ int main()
         image[(x + y*width)*3+2] = 128;
     }
 
-    while (vdb_loop(2))
+    while (vdb_loop(60))
     {
         static int more_lines = 0;
 
