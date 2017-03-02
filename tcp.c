@@ -43,21 +43,28 @@ static tcp_socket_t tcp_listen_socket = 0;
 static int tcp_has_client_socket = 0;
 static int tcp_has_listen_socket = 0;
 
+#ifdef TCP_WINDOWS
+int tcp_init()
+{
+    struct WSAData wsa;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
+        return 0;
+    return 1;
+}
+#else
+int tcp_init() { return 1; }
+#endif
+
 int tcp_listen(int listen_port)
 {
     #if 1 // INADDRY_ANY strategy
 
-    #ifdef TCP_WINDOWS
-    struct WSAData wsa;
-    DWORD yes = 1;
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != NO_ERROR)
-        return 0;
-    #else
-    int yes = 1;
-    #endif
-
+    int enable_reuse = 1;
     struct sockaddr_in addr = {0};
     tcp_has_listen_socket = 0;
+
+    if (!tcp_init())
+        return 0;
 
     tcp_listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_listen_socket == TCP_INVALID_SOCKET)
@@ -66,7 +73,7 @@ int tcp_listen(int listen_port)
         return 0;
     }
 
-    if (setsockopt(tcp_listen_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)) == TCP_SOCKET_ERROR)
+    if (setsockopt(tcp_listen_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable_reuse, sizeof(int)) == TCP_SOCKET_ERROR)
     {
         tcp_close(tcp_listen_socket);
         tcp_cleanup();
