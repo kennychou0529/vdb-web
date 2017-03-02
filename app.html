@@ -111,11 +111,7 @@ var vdb_variables_step  = new Array(vdb_max_variables);
 var vdb_variables_used = 0;
 
 // User interface
-var line_width = 4.0;
-var point_radius = 4.0;
-var nice_points = false;
 var connection_address = "localhost:8000";
-var alpha_value = 120;
 var html_connection_address = null;
 var html_status = null;
 var html_button_connect = null;
@@ -128,7 +124,7 @@ function clamp(v, lo, hi)
     return v;
 }
 
-function parseStyle(style)
+function parseStyle(style, alpha_value)
 {
     var opacity = (style >> 7) & 0x01;
     var mode    = (style >> 6) & 0x01;
@@ -160,14 +156,14 @@ function parseStyle(style)
     }
 
     if (opacity == 1)
-        a = alpha_value;
+        a = 255*alpha_value;
     else
         a = 255;
 
     return [r,g,b,a];
 }
 
-function emitPoint2(x,y, r,g,b,a, coords,colors)
+function emitPoint2(x,y, r,g,b,a, coords,colors, nice_points,point_radius)
 {
     var rx = point_radius/(cvs.width/2.0);
     var ry = point_radius/(cvs.height/2.0);
@@ -202,7 +198,7 @@ function emitPoint2(x,y, r,g,b,a, coords,colors)
     }
 }
 
-function emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors)
+function emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors, line_width)
 {
     var ln = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
     var nx = -(y2-y1) / ln;
@@ -293,11 +289,16 @@ function parseCommands(commands)
     var view = new DataView(commands);
     var offset = 0;
 
+    var point_size = view.getFloat32(offset, little_endian); offset += 4;
+    var line_size = view.getFloat32(offset, little_endian); offset += 4;
+    var alpha_value = view.getFloat32(offset, little_endian); offset += 4;
+    var nice_points = view.getUint8(offset, little_endian); offset += 1;
+
     while (offset < view.byteLength)
     {
         var mode = view.getUint8(offset, little_endian); offset += 1;
         var style = view.getUint8(offset, little_endian); offset += 1;
-        var rgba = parseStyle(style);
+        var rgba = parseStyle(style, alpha_value);
         var r = rgba[0];
         var g = rgba[1];
         var b = rgba[2];
@@ -307,7 +308,7 @@ function parseCommands(commands)
         {
             var x = view.getFloat32(offset, little_endian); offset += 4;
             var y = view.getFloat32(offset, little_endian); offset += 4;
-            count += emitPoint2(x,y, r,g,b,a, coords,colors);
+            count += emitPoint2(x,y, r,g,b,a, coords,colors, nice_points,point_size);
         }
         else if (mode == 2) // point3
         {
@@ -321,7 +322,7 @@ function parseCommands(commands)
             var y1 = view.getFloat32(offset, little_endian); offset += 4;
             var x2 = view.getFloat32(offset, little_endian); offset += 4;
             var y2 = view.getFloat32(offset, little_endian); offset += 4;
-            count += emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors);
+            count += emitLine2(x1,y1,x2,y2, r,g,b,a, coords,colors, line_size);
         }
         else if (mode == 4) // line3
         {
@@ -766,11 +767,6 @@ function sliderChanged(e)
     }
 }
 
-function htmlLineWidthChanged(e) { line_width = parseFloat(e.value); }
-function htmlPointRadiusChanged(e) { point_radius = parseFloat(e.value); }
-function htmlAlphaValueChanged(e) { alpha_value = parseFloat(e.value); }
-function htmlNicePointsChanged(e) { nice_points = e.checked; }
-
 function buttonConnect()
 {
     connect();
@@ -802,26 +798,6 @@ function buttonContinue()
                 <input id="connection_address" type="text"/>
                 <a id="button_connect" href="javascript:buttonConnect()">Connect</a>
                 <p id="status"></p>
-            </div>
-
-            <div class="input_thing">
-                <input id="line_width" onchange="htmlLineWidthChanged(this)" oninput="htmlLineWidthChanged(this)" min="1.0" max="32.0" value="2.0" type="range"/>
-                <label>Line size</label>
-            </div>
-
-            <div class="input_thing">
-                <input id="point_radius" onchange="htmlPointRadiusChanged(this)" oninput="htmlPointRadiusChanged(this)" min="1.0" max="32.0" value="4.0" type="range"/>
-                <label>Point size</label>
-            </div>
-
-            <div class="input_thing">
-                <input id="alpha_value" onchange="htmlAlphaValueChanged(this)" oninput="htmlAlphaValueChanged(this)" min="0.0" max="255.0" value="120" type="range"/>
-                <label>Alpha</label>
-            </div>
-
-            <div class="input_thing">
-                <input id="nice_points" onchange="htmlNicePointsChanged(this)" oninput="htmlNicePointsChanged(this)" type="checkbox"/>
-                <label>Nice points</label>
             </div>
         </div>
     </div>

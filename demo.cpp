@@ -108,7 +108,16 @@ int main()
         static int x = 0;
         vdb_slider1i("x", &x, 0, 32);
         vdb_slider1f("y", &y, -1.0f, +1.0f);
+
+        vdb_translucent();
         vdb_point((float)x, y);
+
+        vdb_setPointSize(32.0f);
+        vdb_setLineSize(8.0f);
+        static float t = 0.0f;
+        t += 1.0f/60.0f;
+        vdb_setTranslucency(0.5f+0.5f*sinf(t));
+        vdb_setNicePoints(1);
     }
 
     // while (vdb_loop(30))

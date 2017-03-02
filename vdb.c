@@ -444,7 +444,7 @@ uint8_t  *vdb_push_u08(uint8_t x)  { _vdb_push_type(x, uint8_t);  }
 uint32_t *vdb_push_u32(uint32_t x) { _vdb_push_type(x, uint32_t); }
 float    *vdb_push_r32(float x)    { _vdb_push_type(x, float);    }
 
-void vdb__init_drawstate();
+void vdb__begin_submission();
 
 int vdb_begin()
 {
@@ -500,7 +500,7 @@ int vdb_begin()
         return 0;
     }
     vdb_shared->work_buffer_used = 0;
-    vdb__init_drawstate();
+    vdb__begin_submission();
     return 1;
 }
 
@@ -565,6 +565,11 @@ static unsigned char vdb_current_color_mode = 0;
 static unsigned char vdb_current_color = 0;
 static unsigned char vdb_current_alpha = 0;
 
+static float *vdb_point_size = 0;
+static float *vdb_line_size = 0;
+static float *vdb_alpha_value = 0;
+static unsigned char *vdb_nice_points = 0;
+
 static float vdb_xrange_left = -1.0f;
 static float vdb_xrange_right = +1.0f;
 static float vdb_yrange_bottom = -1.0f;
@@ -572,7 +577,7 @@ static float vdb_yrange_top = +1.0f;
 static float vdb_zrange_far = -1.0f;
 static float vdb_zrange_near = +1.0f;
 
-void vdb__init_drawstate()
+void vdb__begin_submission()
 {
     vdb_current_color_mode = vdb_color_mode_primary;
     vdb_current_alpha = 0;
@@ -582,6 +587,13 @@ void vdb__init_drawstate()
     vdb_yrange_top = +1.0f;
     vdb_zrange_far = -1.0f;
     vdb_zrange_near = +1.0f;
+
+    // Reserve the immediately first portion of the work buffer
+    // for geometry-global variables
+    vdb_point_size = vdb_push_r32(4.0f);
+    vdb_line_size = vdb_push_r32(4.0f);
+    vdb_alpha_value = vdb_push_r32(0.5f);
+    vdb_nice_points = vdb_push_u08(0);
 }
 
 void vdb_color_primary(int primary, int shade)
@@ -616,6 +628,11 @@ void vdb_color_black(int shade) { vdb_color_primary(3, shade); }
 void vdb_color_white(int shade) { vdb_color_primary(4, shade); }
 void vdb_translucent()          { vdb_current_alpha = 1; }
 void vdb_opaque()               { vdb_current_alpha = 0; }
+
+void vdb_setPointSize(float radius)   { if (vdb_point_size)  *vdb_point_size = radius; }
+void vdb_setLineSize(float radius)    { if (vdb_line_size)   *vdb_line_size = radius; }
+void vdb_setNicePoints(int enabled)   { if (vdb_nice_points) *vdb_nice_points = (unsigned char)enabled; }
+void vdb_setTranslucency(float alpha) { if (vdb_alpha_value) *vdb_alpha_value = alpha; }
 
 void vdb_xrange(float left, float right)
 {
