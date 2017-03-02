@@ -7,7 +7,8 @@
 body {
     font-family: ubuntu, sans-serif;
     font-size: 13px;
-    background: #f1f1f1;
+    background: #fff;
+    /*background: #f1f1f1;*/
     margin: 0;
 }
 
@@ -115,6 +116,10 @@ var point_radius = 4.0;
 var nice_points = false;
 var connection_address = "localhost:8000";
 var alpha_value = 120;
+var html_connection_address = null;
+var html_status = null;
+var html_button_connect = null;
+var html_fps = null;
 
 function clamp(v, lo, hi)
 {
@@ -264,7 +269,7 @@ function addUserVariable(label, value, min, max, step)
         vdb_variables_label[registered_i] = label;
         vdb_variables_value[registered_i] = value;
         vdb_variables_used++;
-        htmlAddUserInput(label);
+        htmlAddUserInput(label, min, max, step, value);
         console.log("Registered " + label + " with initial value " + value);
     }
 
@@ -489,23 +494,23 @@ function connect()
 
     connect_called = true;
 
-    connection_address = document.getElementById("connection_address").value;
-    document.getElementById("connection_address").hidden = true;
-    document.getElementById("button_connect").hidden = true;
-    document.getElementById("status").hidden = false;
+    connection_address = html_connection_address.value;
+    html_connection_address.hidden = true;
+    html_button_connect.hidden = true;
+    html_status.hidden = false;
 
     setInterval(function()
     {
         if (!ws)
         {
-            document.getElementById("status").innerHTML = "Connecting to " + connection_address + "...";
+            html_status.innerHTML = "Connecting to " + connection_address + "...";
 
             ws = new WebSocket("ws://" + connection_address);
             ws.binaryType = 'arraybuffer';
 
             ws.onopen = function()
             {
-                document.getElementById("status").innerHTML = "Connected to " + connection_address;
+                html_status.innerHTML = "Connected to " + connection_address;
                 ws.send("Hello from browser!");
                 has_connection = true;
             }
@@ -534,8 +539,7 @@ function connect()
                     stats_bps_dt = 0.0;
                 }
                 var mbps = (10.0*stats_bps/(1024.0*1024.0)).toPrecision(2);
-
-                document.getElementById("status").innerHTML = "Connected to " + connection_address + " (" + mbps + " mbps)";
+                html_status.innerHTML = "Connected to " + connection_address + " (" + mbps + " mbps)";
                 cmd_data = e.data;
             }
         }
@@ -564,11 +568,7 @@ function anim(t)
     {
         draw();
 
-        document.getElementById("fps").innerText = "FPS: " + (1.0/delta).toPrecision(4);
-        line_width = parseFloat(document.getElementById("line_width").value);
-        point_radius = parseFloat(document.getElementById("point_radius").value);
-        alpha_value = parseFloat(document.getElementById("alpha_value").value);
-        nice_points = document.getElementById("nice_points").checked;
+        html_fps.innerHTML = "FPS: " + (1.0/delta).toPrecision(4);
         stats_bps_dt += delta;
 
         for (var i = 0; i < vdb_variables_used; i++)
@@ -579,22 +579,6 @@ function anim(t)
             var step = vdb_variables_step[i];
             vdb_variables_value[i] = clamp(vdb_variables_value[i], min, max);
             var value = vdb_variables_value[i];
-
-            var e = document.getElementById(label);
-            e.setAttribute("type", "range");
-            e.setAttribute("min", min);
-            e.setAttribute("max", max);
-            e.setAttribute("step", step);
-            e.setAttribute("value", value);
-            e.setAttribute("onchange", "sliderChanged(this)")
-            e.setAttribute("oninput", "sliderChanged(this)")
-
-            document.getElementById(label + "_label").innerHTML = label + " = ";
-            if (parseInt(step) == step)
-                document.getElementById(label + "_value").innerHTML = value;
-            else
-                document.getElementById(label + "_value").innerHTML = value.toPrecision(3);
-
         }
 
         status = "s";
@@ -690,10 +674,9 @@ function init()
 
 // Adds the following to the user widget section
 // div: id = label
-//   label: id = label + "_value"
 //   input: id = label + "_input"
 //   label: id = label + "_label"
-function htmlAddUserInput(label)
+function htmlAddUserInput(label, min, max, step, value)
 {
     var div = document.createElement("div");
     div.className = "input_thing";
@@ -703,6 +686,13 @@ function htmlAddUserInput(label)
     {
         var e = document.createElement("input");
         e.id = label;
+        e.setAttribute("type", "range");
+        e.setAttribute("min", min);
+        e.setAttribute("max", max);
+        e.setAttribute("step", step);
+        e.setAttribute("value", value);
+        e.setAttribute("onchange", "sliderChanged(this)")
+        e.setAttribute("oninput", "sliderChanged(this)")
         div.appendChild(e);
     }
 
@@ -710,13 +700,10 @@ function htmlAddUserInput(label)
     {
         var e = document.createElement("label");
         e.id = label + "_label";
-        div.appendChild(e);
-    }
-
-    // create value text
-    {
-        var e = document.createElement("label");
-        e.id = label + "_value";
+        if (parseInt(step) == step)
+            e.innerHTML = label + " = " + value;
+        else
+            e.innerHTML = label + " = " + value.toPrecision(3);
         div.appendChild(e);
     }
 
@@ -747,8 +734,13 @@ function pageload()
         return;
     }
 
-    document.getElementById("connection_address").value = connection_address;
-    document.getElementById("status").hidden = true;
+    html_connection_address = document.getElementById("connection_address");
+    html_status = document.getElementById("status");
+    html_button_connect = document.getElementById("button_connect");
+    html_fps = document.getElementById("fps");
+
+    html_connection_address.value = connection_address;
+    html_status.hidden = true;
 
     connect();
     init();
@@ -758,9 +750,26 @@ function pageload()
 function sliderChanged(e)
 {
     for (var i = 0; i < vdb_variables_used; i++)
+    {
         if (e.id === vdb_variables_label[i])
-            vdb_variables_value[i] = parseFloat(e.value);
+        {
+            var v = parseFloat(e.value);
+            vdb_variables_value[i] = v;
+            e.setAttribute("min", vdb_variables_min[i]);
+            e.setAttribute("max", vdb_variables_max[i]);
+            e.setAttribute("step", vdb_variables_step[i]);
+            if (parseInt(vdb_variables_step[i]) == vdb_variables_step[i])
+                document.getElementById(e.id + "_label").innerHTML = e.id + " = " + v;
+            else
+                document.getElementById(e.id + "_label").innerHTML = e.id + " = " + v.toPrecision(3);
+        }
+    }
 }
+
+function htmlLineWidthChanged(e) { line_width = parseFloat(e.value); }
+function htmlPointRadiusChanged(e) { point_radius = parseFloat(e.value); }
+function htmlAlphaValueChanged(e) { alpha_value = parseFloat(e.value); }
+function htmlNicePointsChanged(e) { nice_points = e.checked; }
 
 function buttonConnect()
 {
@@ -796,22 +805,22 @@ function buttonContinue()
             </div>
 
             <div class="input_thing">
-                <input id="line_width" min="1.0" max="32.0" value="2.0" type="range"/>
+                <input id="line_width" onchange="htmlLineWidthChanged(this)" oninput="htmlLineWidthChanged(this)" min="1.0" max="32.0" value="2.0" type="range"/>
                 <label>Line size</label>
             </div>
 
             <div class="input_thing">
-                <input id="point_radius" min="1.0" max="32.0" value="4.0" type="range"/>
+                <input id="point_radius" onchange="htmlPointRadiusChanged(this)" oninput="htmlPointRadiusChanged(this)" min="1.0" max="32.0" value="4.0" type="range"/>
                 <label>Point size</label>
             </div>
 
             <div class="input_thing">
-                <input id="alpha_value" min="0.0" max="255.0" value="120" type="range"/>
+                <input id="alpha_value" onchange="htmlAlphaValueChanged(this)" oninput="htmlAlphaValueChanged(this)" min="0.0" max="255.0" value="120" type="range"/>
                 <label>Alpha</label>
             </div>
 
             <div class="input_thing">
-                <input id="nice_points" type="checkbox"/>
+                <input id="nice_points" onchange="htmlNicePointsChanged(this)" oninput="htmlNicePointsChanged(this)" type="checkbox"/>
                 <label>Nice points</label>
             </div>
         </div>
