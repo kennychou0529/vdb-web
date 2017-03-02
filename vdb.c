@@ -591,7 +591,7 @@ void vdb__begin_submission()
     // Reserve the immediately first portion of the work buffer
     // for geometry-global variables
     vdb_point_size = vdb_push_r32(4.0f);
-    vdb_line_size = vdb_push_r32(4.0f);
+    vdb_line_size = vdb_push_r32(2.0f);
     vdb_alpha_value = vdb_push_r32(0.5f);
     vdb_nice_points = vdb_push_u08(0);
 }
