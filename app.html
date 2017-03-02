@@ -7,8 +7,8 @@
 body {
     font-family: ubuntu, sans-serif;
     font-size: 13px;
-    background: #fff;
-    /*background: #f1f1f1;*/
+    /*background: #fff;*/
+    background: #f1f1f1;
     margin: 0;
 }
 
@@ -21,24 +21,25 @@ body {
     margin-right: auto;
     margin-top: 12px;
     margin-bottom: 12px;
-    width: 640px;
+    width: 100%;
     height: 320px;
 }
 
 #container {
-    width: 640px;
+    min-width: 400px;
+    width: 60%;
     height: 480px;
     display: block;
     margin: auto;
 }
 
-#user_widgets { float: right; }
 #status { display: inline; color: #888; vertical-align: middle; }
 #fps { display: inline; color: #888; vertical-align: middle; }
 
-.input_thing select { width: 100px; }
-.input_thing input { width: 100px; vertical-align: middle; padding: 0; margin: 0; margin-left: 4px; margin-right: 4px; }
-.input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; width: 280px; padding: 6px; margin-bottom: 8px; }
+#button_continue { float: right; }
+select { width: 100px; }
+input { width: 100px; vertical-align: middle; padding: 0; margin: 0; margin-left: 4px; margin-right: 4px; }
+.input_thing { border-radius: 2px; box-shadow: 0px 2px 2px #a7a7a7; background:#fff; max-width: 280px; padding: 6px; box-sizing: border-box; margin-bottom: 8px; }
 
 a { background: #bb5544; vertical-align: middle; padding: 2px 4px 2px 4px; border-radius: 2px; color: #fff; text-decoration: none; }
 a:hover { background: #cc6655;}
@@ -115,7 +116,7 @@ var connection_address = "localhost:8000";
 var html_connection_address = null;
 var html_status = null;
 var html_button_connect = null;
-var html_fps = null;
+// var html_fps = null;
 
 function clamp(v, lo, hi)
 {
@@ -569,7 +570,7 @@ function anim(t)
     {
         draw();
 
-        html_fps.innerHTML = "FPS: " + (1.0/delta).toPrecision(4);
+        // html_fps.innerHTML = "FPS: " + (1.0/delta).toPrecision(4);
         stats_bps_dt += delta;
 
         for (var i = 0; i < vdb_variables_used; i++)
@@ -738,7 +739,7 @@ function pageload()
     html_connection_address = document.getElementById("connection_address");
     html_status = document.getElementById("status");
     html_button_connect = document.getElementById("button_connect");
-    html_fps = document.getElementById("fps");
+    // html_fps = document.getElementById("fps");
 
     html_connection_address.value = connection_address;
     html_status.hidden = true;
@@ -786,19 +787,15 @@ function buttonContinue()
     <div id="container">
         <canvas id="canvas"></canvas>
 
-        <div id="user_widgets">
-            <div class="input_thing">
-                <a href="javascript:buttonContinue()">Continue</a>
-                <p id="fps"></p>
-            </div>
+        <a id="button_continue" href="javascript:buttonContinue()">Continue</a>
+
+        <div class="input_thing">
+            <input id="connection_address" type="text"/>
+            <a id="button_connect" href="javascript:buttonConnect()">Connect</a>
+            <p id="status"></p>
         </div>
 
-        <div id="config">
-            <div class="input_thing">
-                <input id="connection_address" type="text"/>
-                <a id="button_connect" href="javascript:buttonConnect()">Connect</a>
-                <p id="status"></p>
-            </div>
+        <div id="user_widgets">
         </div>
     </div>
 </body>
