@@ -1,3 +1,20 @@
+inspiration
+o https://github.com/itchio/capsule
+o https://github.com/jonasmr/microprofile
+o https://github.com/simondlevy/hackflight
+
+before release:
+o use public domain sha1
+o remove _CRT_SECURE_NO_WARNINGS
+    #define snprintf _snprintf
+
+js:
+    https://github.com/gasman/bonsai-c
+    http://babeljs.io/
+    https://news.ycombinator.com/item?id=11844574
+    https://flowtype.org/docs/getting-started.html#_
+    https://www.typescriptlang.org/
+
 demo:
 o all stages of the hough transform
 o show interactive mode and stream mode
