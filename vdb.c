@@ -743,7 +743,8 @@ void vdb_circle(float x, float y, float r)
     vdb_push_style();
     vdb_push_r32(vdb__map_x(x));
     vdb_push_r32(vdb__map_y(y));
-    vdb_push_r32(r);
+    vdb_push_r32(vdb__map_x(r) - vdb__map_x(0.0f));
+    vdb_push_r32(vdb__map_y(r) - vdb__map_y(0.0f));
 }
 
 void vdb_imageRGB8(const void *data, int w, int h)

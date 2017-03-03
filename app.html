@@ -229,7 +229,7 @@ function emitFillRect(x1,y1,x2,y2, r,g,b,a, coords,colors)
     return 6;
 }
 
-function emitCircle(x,y,r, r,g,b,a, coords,colors)
+function emitCircle(x,y,rx,ry, r,g,b,a, coords,colors)
 {
     var n = 32;
     for (var i = 0; i < n; i++)
@@ -238,10 +238,10 @@ function emitCircle(x,y,r, r,g,b,a, coords,colors)
         var t2 = 2.0*3.1415926*(i+1)/n;
         var x1 = x;
         var y1 = y;
-        var x2 = x1 + r*Math.cos(t1);
-        var y2 = y1 + r*Math.sin(t1);
-        var x3 = x1 + r*Math.cos(t2);
-        var y3 = y1 + r*Math.sin(t2);
+        var x2 = x1 + rx*Math.cos(t1);
+        var y2 = y1 + ry*Math.sin(t1);
+        var x3 = x1 + rx*Math.cos(t2);
+        var y3 = y1 + ry*Math.sin(t2);
         coords.push(x1,y1, x2,y2, x3,y3);
         colors.push(r,g,b,a, r,g,b,a, r,g,b,a);
     }
@@ -346,8 +346,9 @@ function parseCommands(commands)
         {
             var x = view.getFloat32(offset, little_endian); offset += 4;
             var y = view.getFloat32(offset, little_endian); offset += 4;
-            var r = view.getFloat32(offset, little_endian); offset += 4;
-            count += emitCircle(x,y,r, r,g,b,a, coords,colors);
+            var rx = view.getFloat32(offset, little_endian); offset += 4;
+            var ry = view.getFloat32(offset, little_endian); offset += 4;
+            count += emitCircle(x,y,rx,ry, r,g,b,a, coords,colors);
         }
         else if (mode == 7) // image_rgb8
         {
