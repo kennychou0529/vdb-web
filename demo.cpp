@@ -106,8 +106,15 @@ int main()
 
         static float y = 0.0f;
         static int x = 0;
-        vdb_slider1i("x", &x, 0, 32);
-        vdb_slider1f("y", &y, -1.0f, +1.0f);
+        // vdb_slider1i("x", &x, 0, 32);
+        // vdb_slider1f("y", &y, -1.0f, +1.0f);
+
+        float mx,my;
+        if (vdb_mouse_click(&mx,&my))
+        {
+            x = (int)mx;
+            y = my;
+        }
 
         vdb_translucent();
         vdb_point((float)x, y);

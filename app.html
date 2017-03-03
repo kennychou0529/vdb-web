@@ -747,6 +747,24 @@ function pageload()
     connect();
     init();
     anim();
+
+    cvs.addEventListener("click", canvasClick);
+    cvs.addEventListener("mousemove", canvasMouseMove);
+}
+
+function canvasMouseMove(e)
+{
+    // console.log(e.clientX + " " + e.clientY);
+}
+
+function canvasClick(e)
+{
+    if (ws != null)
+    {
+        var x = -1.0 + 2.0*e.offsetX/cvs.clientWidth;
+        var y = +1.0 - 2.0*e.offsetY/cvs.clientHeight;
+        ws.send("m " + x + " " + y);
+    }
 }
 
 function sliderChanged(e)

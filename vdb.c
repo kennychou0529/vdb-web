@@ -118,8 +118,9 @@ typedef struct
     float       msg_var_value[VDB_MAX_VAR_COUNT];
     int         msg_var_count;
     int         msg_flag_continue;
-    // float    app_mouse_x;
-    // float    app_mouse_y;
+    int         msg_mouse_click;
+    float       msg_mouse_click_x;
+    float       msg_mouse_click_y;
 } vdb_shared_t;
 
 static vdb_shared_t *vdb_shared = 0;
@@ -205,6 +206,17 @@ int vdb_handle_message(vdb_msg_t msg)
     if (msg.length == 1 && msg.payload[0] == 'c')
     {
         vs->msg_flag_continue = 1;
+        return 1;
+    }
+
+    // Mouse click event
+    if (msg.length > 1 && msg.payload[0] == 'm')
+    {
+        float x, y;
+        vdb_assert(sscanf(msg.payload+1, "%f%f", &x, &y) == 2);
+        vs->msg_mouse_click = 1;
+        vs->msg_mouse_click_x = x;
+        vs->msg_mouse_click_y = y;
         return 1;
     }
 
@@ -445,6 +457,7 @@ uint32_t *vdb_push_u32(uint32_t x) { _vdb_push_type(x, uint32_t); }
 float    *vdb_push_r32(float x)    { _vdb_push_type(x, float);    }
 
 void vdb__begin_submission();
+void vdb__end_submission();
 
 int vdb_begin()
 {
@@ -509,6 +522,8 @@ void vdb_end()
     vdb_shared_t *vs = vdb_shared;
     if (vdb_poll_data_sent()) // Check if send_thread has finished sending data
     {
+        vdb__end_submission();
+
         char *new_work_buffer = vs->send_buffer;
         vs->send_buffer = vs->work_buffer;
         vs->bytes_to_send = vs->work_buffer_used;
@@ -596,6 +611,12 @@ void vdb__begin_submission()
     vdb_nice_points = vdb_push_u08(0);
 }
 
+void vdb__end_submission()
+{
+    // Mark events as handled
+    vdb_shared->msg_mouse_click = 0;
+}
+
 void vdb_color_primary(int primary, int shade)
 {
     if (primary < 0) primary = 0;
@@ -652,6 +673,8 @@ void vdb_zrange(float z_near, float z_far)
     vdb_zrange_far = z_far;
 }
 
+float vdb__unmap_x(float x) { return vdb_xrange_left + (0.5f+0.5f*x)*(vdb_xrange_right-vdb_xrange_left); }
+float vdb__unmap_y(float y) { return vdb_yrange_bottom + (0.5f+0.5f*y)*(vdb_yrange_top-vdb_yrange_bottom); }
 float vdb__map_x(float x) { return -1.0f + 2.0f*(x-vdb_xrange_left)/(vdb_xrange_right-vdb_xrange_left); }
 float vdb__map_y(float y) { return -1.0f + 2.0f*(y-vdb_yrange_bottom)/(vdb_yrange_top-vdb_yrange_bottom); }
 float vdb__map_z(float z) { return +1.0f - 2.0f*(z-vdb_zrange_near)/(vdb_zrange_far-vdb_zrange_near); }
@@ -789,4 +812,15 @@ void vdb_slider1i(const char *in_label, int *x, int min_value, int max_value)
 void vdb_checkbox(const char *in_label, int *x)
 {
     vdb_slider1i(in_label, x, 0, 1);
+}
+
+int vdb_mouse_click(float *x, float *y)
+{
+    if (vdb_shared->msg_mouse_click)
+    {
+        *x = vdb__unmap_x(vdb_shared->msg_mouse_click_x);
+        *y = vdb__unmap_y(vdb_shared->msg_mouse_click_y);
+        return 1;
+    }
+    return 0;
 }
