@@ -1,18 +1,3 @@
-Non-blocking sockets
-    @send:
-        block until there is data to be sent
-        while (remaining > 0)
-            block until socket is ready
-            remaining -= send(...)
-
-    @recv:
-        vdb_begin:
-            while (tcp_recv(buf+pos)) { pos += n }
-
-Async io
-    vdb_begin:
-
-
 inspiration
 o https://github.com/itchio/capsule
 o https://github.com/jonasmr/microprofile
