@@ -14,8 +14,7 @@ void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
 int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
-#define MBEDTLS_SHA1_C
-#include "sha1.c" // @ replace https://tools.ietf.org/html/rfc3174#page-10
+#include "sha1.c"
 
 int vdb_extract_user_key(const char *request, int request_len, char *key)
 {
@@ -75,7 +74,7 @@ int vdb_generate_accept_key(const char *request, int request_len, char *accept_k
     {
         // Compute sha1 hash
         unsigned char sha1[20];
-        mbedtls_sha1(new_key, (size_t)new_len, sha1);
+        vdb_sha1(new_key, (unsigned int)new_len, sha1);
 
         // Convert to base64 null-terminated string
         {

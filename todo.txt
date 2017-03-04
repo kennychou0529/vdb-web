@@ -8,13 +8,13 @@ o Is it possible to terminate without terminating the recv/send procs?
     - 'Normal' termination is handled with atexit
     - CtrlC and the like are handled by sharing the signal handlers...?
 
-before release:
-o use public domain sha1
+release quality:
 o remove _CRT_SECURE_NO_WARNINGS
     #define snprintf _snprintf
 o message accumulation
     read bytes until length == payload length
 o ensure that if vdb_begin returns 0, draw calls are invalidated
+o detect endianness at runtime?
 
 js:
     https://github.com/gasman/bonsai-c

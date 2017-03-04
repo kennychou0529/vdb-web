@@ -49,7 +49,12 @@
 #endif
 
 #if VDB_LISTEN_PORT < 1024 || VDB_LISTEN_PORT > 65535
-#error [vdb] The specified listen port is outside of the valid range (1024-65535)
+#error "[vdb] The specified listen port is outside of the valid range (1024-65535)"
+#endif
+
+#define VDB_LITTLE_ENDIAN
+#if !defined(VDB_LITTLE_ENDIAN) && !defined(VDB_BIG_ENDIAN)
+#error "You must define either VDB_LITTLE_ENDIAN or VDB_BIG_ENDIAN"
 #endif
 
 #define VDB_LABEL_LENGTH 16
