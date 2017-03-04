@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #endif
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -53,12 +52,25 @@
 #error [vdb] The specified listen port is outside of the valid range (1024-65535)
 #endif
 
-#define VDB_MAX_VAR_COUNT 1024
 #define VDB_LABEL_LENGTH 16
 typedef struct
 {
     char chars[VDB_LABEL_LENGTH+1];
 } vdb_label_t;
+
+#define VDB_MAX_VAR_COUNT 1024
+typedef struct
+{
+    vdb_label_t var_label[VDB_MAX_VAR_COUNT];
+    float       var_value[VDB_MAX_VAR_COUNT];
+    int         var_count;
+
+    int         flag_continue;
+
+    int         mouse_click;
+    float       mouse_click_x;
+    float       mouse_click_y;
+} vdb_status_t;
 
 typedef struct
 {
@@ -88,14 +100,7 @@ typedef struct
 
     char recv_buffer[VDB_RECV_BUFFER_SIZE];
 
-    // These hold the latest state from the browser
-    vdb_label_t msg_var_label[VDB_MAX_VAR_COUNT];
-    float       msg_var_value[VDB_MAX_VAR_COUNT];
-    int         msg_var_count;
-    int         msg_flag_continue;
-    int         msg_mouse_click;
-    float       msg_mouse_click_x;
-    float       msg_mouse_click_y;
+    vdb_status_t status;
 } vdb_shared_t;
 
 static vdb_shared_t *vdb_shared = 0;
@@ -127,6 +132,7 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
 
 #include "tcp.c"
 #include "websocket.c"
+#include "vdb_handle_message.c"
 #include "vdb_network_threads.c"
 #include "vdb_push_buffer.c"
 #include "vdb_draw_commands.c"

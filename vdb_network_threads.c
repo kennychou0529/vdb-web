@@ -1,9 +1,3 @@
-// vdb_network_threads.c
-
-int vdb_handle_message(vdb_msg_t msg); // Parses messages sent from the client (browser) to the host
-int vdb_send_thread(); // Runs in the background and transmits the draw commands buffer
-int vdb_recv_thread(); // Runs in the background and builds up received messages
-
 #ifdef VDB_WINDOWS
 int vdb_wait_data_ready()
 {
@@ -25,77 +19,6 @@ int vdb_signal_data_ready() { int one = 1; return write(vdb_shared->ready[1], &o
 int vdb_signal_data_sent()  { int one = 1; return  write(vdb_shared->done[1], &one, sizeof(one)) == sizeof(one); }
 void vdb_sleep(int ms)      { usleep(ms*1000); }
 #endif
-
-int vdb_handle_message(vdb_msg_t msg)
-{
-    // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
-    vdb_shared_t *vs = vdb_shared;
-
-    // This means the user pressed the 'continue' button
-    if (msg.length == 1 && msg.payload[0] == 'c')
-    {
-        vs->msg_flag_continue = 1;
-        return 1;
-    }
-
-    // Mouse click event
-    if (msg.length > 1 && msg.payload[0] == 'm')
-    {
-        float x, y;
-        vdb_assert(sscanf(msg.payload+1, "%f%f", &x, &y) == 2);
-        vs->msg_mouse_click = 1;
-        vs->msg_mouse_click_x = x;
-        vs->msg_mouse_click_y = y;
-        return 1;
-    }
-
-    // This is a status update that is sent at regular intervals
-    if (msg.length > 1 && msg.payload[0] == 's')
-    {
-        char *str = msg.payload;
-        int pos = 0 + 2;
-        int got = 0;
-        int i;
-        int n;
-
-        // read 'number of variables'
-        vdb_assert(sscanf(str+pos, "%d%n", &n, &got) == 1);
-        vdb_assert(n >= 0 && n < VDB_MAX_VAR_COUNT);
-
-        // if there are no variables we are done!
-        if (n == 0)
-            return 1;
-
-        pos += got+1; // read past int and space
-        vdb_assert(pos < msg.length);
-
-        // @ ROBUSTNESS @ RACE CONDITION: Should write to a seperate buffer
-        // and swap when we are done, and also ensure mutex. As it stands
-        // now we will be reading concurrently as we write to this array,
-        // without any locking!
-        for (i = 0; i < n; i++)
-        {
-            vdb_label_t label;
-            float value;
-
-            // read label
-            vdb_assert(pos + VDB_LABEL_LENGTH < msg.length);
-            vdb_copy_label(&label, str+pos);
-            pos += VDB_LABEL_LENGTH;
-
-            // read value
-            vdb_assert(sscanf(str+pos, "%f%n", &value, &got) == 1);
-            pos += got+1; // read past float and space
-
-            // update variable @ ROBUSTNESS @ RACE CONDITION
-            vs->msg_var_label[i] = label;
-            vs->msg_var_value[i] = value;
-        }
-        vs->msg_var_count = n;
-    }
-
-    return 1;
-}
 
 int vdb_send_thread()
 {
@@ -280,7 +203,7 @@ int vdb_recv_thread()
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
             continue;
         }
-        vdb_handle_message(msg);
+        vdb_handle_message(msg, &vs->status);
     }
     return 0;
 }

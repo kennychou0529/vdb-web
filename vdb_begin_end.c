@@ -82,9 +82,9 @@ int vdb_loop(int fps)
     {
         vdb_end();
         vdb_sleep(1000/fps);
-        if (vdb_shared->msg_flag_continue)
+        if (vdb_shared->status.flag_continue)
         {
-            vdb_shared->msg_flag_continue = 0;
+            vdb_shared->status.flag_continue = 0;
             entry = 1;
             return 0;
         }

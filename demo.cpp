@@ -104,20 +104,26 @@ int main()
 
         vdb_checkbox("More lines", &more_lines);
 
-        static float y = 0.0f;
-        static int x = 0;
-        // vdb_slider1i("x", &x, 0, 32);
-        // vdb_slider1f("y", &y, -1.0f, +1.0f);
+        static float y1 = 0.0f;
+        static int x1 = 0;
+        vdb_slider1i("x1", &x1, 0, 32);
+        vdb_slider1f("y1", &y1, -1.0f, +1.0f);
 
+        static float x = 0.0f;
+        static float y = 0.0f;
         float mx,my;
         if (vdb_mouse_click(&mx,&my))
         {
-            x = (int)mx;
+            x = mx;
             y = my;
         }
 
         vdb_translucent();
-        vdb_point((float)x, y);
+        vdb_point(x, y);
+
+        vdb_opaque();
+        vdb_color_red(1);
+        vdb_point(x1, y1);
 
         vdb_setPointSize(32.0f);
         vdb_setLineSize(8.0f);

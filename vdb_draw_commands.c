@@ -52,7 +52,7 @@ void vdb_begin_submission()
 void vdb_end_submission()
 {
     // Mark events as handled
-    vdb_shared->msg_mouse_click = 0;
+    vdb_shared->status.mouse_click = 0;
 }
 
 void vdb_color_primary(int primary, int shade)
@@ -209,11 +209,11 @@ void vdb_slider1f(const char *in_label, float *x, float min_value, float max_val
 
     // Update variable
     // @ ROBUSTNESS @ RACE CONDITION: Mutex on latest message
-    for (i = 0; i < vdb_shared->msg_var_count; i++)
+    for (i = 0; i < vdb_shared->status.var_count; i++)
     {
-        if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
+        if (vdb_cmp_label(&vdb_shared->status.var_label[i], &label))
         {
-            float v = vdb_shared->msg_var_value[i];
+            float v = vdb_shared->status.var_value[i];
             if (v < min_value) v = min_value;
             if (v > max_value) v = max_value;
             *x = v;
@@ -236,11 +236,11 @@ void vdb_slider1i(const char *in_label, int *x, int min_value, int max_value)
 
     // Update variable
     // @ ROBUSTNESS @ RACE CONDITION: Mutex on latest message
-    for (i = 0; i < vdb_shared->msg_var_count; i++)
+    for (i = 0; i < vdb_shared->status.var_count; i++)
     {
-        if (vdb_cmp_label(&vdb_shared->msg_var_label[i], &label))
+        if (vdb_cmp_label(&vdb_shared->status.var_label[i], &label))
         {
-            int v = (int)vdb_shared->msg_var_value[i];
+            int v = (int)vdb_shared->status.var_value[i];
             if (v < min_value) v = min_value;
             if (v > max_value) v = max_value;
             *x = v;
@@ -255,10 +255,10 @@ void vdb_checkbox(const char *in_label, int *x)
 
 int vdb_mouse_click(float *x, float *y)
 {
-    if (vdb_shared->msg_mouse_click)
+    if (vdb_shared->status.mouse_click)
     {
-        *x = vdb__unmap_x(vdb_shared->msg_mouse_click_x);
-        *y = vdb__unmap_y(vdb_shared->msg_mouse_click_y);
+        *x = vdb__unmap_x(vdb_shared->status.mouse_click_x);
+        *y = vdb__unmap_y(vdb_shared->status.mouse_click_y);
         return 1;
     }
     return 0;
