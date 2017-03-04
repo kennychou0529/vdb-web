@@ -28,7 +28,7 @@ static float vdb_zrange_near = +1.0f;
 
 // This function is automatically called on a successful vdb_begin call
 // to let you set up whatever state before beginning to submit commands.
-void vdb__begin_submission()
+void vdb_begin_submission()
 {
     vdb_current_color_mode = vdb_color_mode_primary;
     vdb_current_alpha = 0;
@@ -49,7 +49,7 @@ void vdb__begin_submission()
 
 // This function is automatically called on vdb_end, right before
 // the workload is sent off the the network thread.
-void vdb__end_submission()
+void vdb_end_submission()
 {
     // Mark events as handled
     vdb_shared->msg_mouse_click = 0;

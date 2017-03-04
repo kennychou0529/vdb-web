@@ -15,7 +15,6 @@ int vdb_begin()
         if (!vdb_shared)
         {
             vdb_err_once("Tried to allocate too much memory, try lowering VDB_RECV_BUFFER_SIZE and VDB_SEND_BUFFER_SIZE\n");
-            vdb_shared->critical_error = 1;
             return 0;
         }
 
@@ -47,7 +46,7 @@ int vdb_begin()
         return 0;
     }
     vdb_shared->work_buffer_used = 0;
-    vdb__begin_submission();
+    vdb_begin_submission();
     return 1;
 }
 
@@ -56,7 +55,7 @@ void vdb_end()
     vdb_shared_t *vs = vdb_shared;
     if (vdb_poll_data_sent()) // Check if send_thread has finished sending data
     {
-        vdb__end_submission();
+        vdb_end_submission();
 
         char *new_work_buffer = vs->send_buffer;
         vs->send_buffer = vs->work_buffer;
