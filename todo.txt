@@ -30,6 +30,7 @@ o process termination of linux
     poll (or maybe get notified when the pipe is destroyed?) the parent
     process. The recv thread could not do this, unless we use non-blocking
     sockets...
+o ensure that if vdb_begin returns 0, draw calls are invalidated
 
 js:
     https://github.com/gasman/bonsai-c
