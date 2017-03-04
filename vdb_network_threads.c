@@ -203,7 +203,11 @@ int vdb_recv_thread()
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
             continue;
         }
-        vdb_handle_message(msg, &vs->status);
+        if (!vdb_handle_message(msg, &vs->status))
+        {
+            vdb_log("Handled a bad message\n");
+            continue;
+        }
     }
     return 0;
 }

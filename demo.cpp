@@ -123,7 +123,7 @@ int main()
 
         vdb_opaque();
         vdb_color_red(1);
-        vdb_point(x1, y1);
+        vdb_point((float)x1, y1);
 
         vdb_setPointSize(32.0f);
         vdb_setLineSize(8.0f);
