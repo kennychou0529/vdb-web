@@ -164,6 +164,7 @@ int vdb_recv_thread()
             vdb_critical(vs->send_pid != -1);
             if (vs->send_pid == 0)
             {
+                signal(SIGTERM, SIG_DFL); // Clear inherited signal handlers
                 vdb_send_thread(); // vdb_send_thread sets has_send_thread to 0 upon returning
                 _exit(0);
             }

@@ -1,3 +1,14 @@
+#ifdef VDB_UNIX
+void vdb_unix_atexit()
+{
+    if (vdb_shared)
+    {
+        kill(vdb_shared->recv_pid, SIGTERM);
+        kill(vdb_shared->send_pid, SIGTERM);
+    }
+}
+#endif
+
 int vdb_begin()
 {
     if (!vdb_shared)
@@ -19,14 +30,22 @@ int vdb_begin()
         }
 
         #ifdef VDB_UNIX
+        atexit(vdb_unix_atexit); // We want to terminate any child processes when we terminate
+
         vdb_critical(pipe(vdb_shared->ready) != -1);
         vdb_critical(pipe2(vdb_shared->done, O_NONBLOCK) != -1);
+
+        // Create recv process
+        vdb_shared->recv_pid = fork();
+        vdb_critical(vdb_shared->recv_pid != -1);
+        if (vdb_shared->recv_pid == 0)
         {
-            pid_t pid = fork();
-            vdb_critical(pid != -1);
-            if (pid == 0) { vdb_recv_thread(); _exit(0); }
+            signal(SIGTERM, SIG_DFL); // Clear inherited signal handlers
+            vdb_recv_thread();
+            _exit(0);
         }
         vdb_signal_data_sent(); // Needed for first vdb_end call
+
         #else
         vdb_shared->send_semaphore = CreateSemaphore(0, 0, 1, 0);
         CreateThread(0, 0, vdb_win_recv_thread, NULL, 0, 0);

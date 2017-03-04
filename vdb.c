@@ -80,6 +80,7 @@ typedef struct
     volatile int bytes_to_send;
     #else
     int bytes_to_send;
+    pid_t recv_pid;
     pid_t send_pid;
     // These pipes are used for flow control between the main thread and the sending thread
     // The sending thread blocks on a read on pipe_ready, until the main thread signals the
