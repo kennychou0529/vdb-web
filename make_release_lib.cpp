@@ -81,6 +81,26 @@ void concatenate_file(char *filename, FILE *f)
     }
 }
 
+void embed_html(char *filename, FILE *f)
+{
+    int n = 0;
+    char **lines = read_lines(filename, &n);
+    fprintf(f, "\n// Begin embedded app.html\n");
+    fprintf(f, "const char *vdb_html_page = \n");
+    for (int i = 0; i < n; i++)
+    {
+        // replace " with '
+        // todo: more robust replacement
+        for (int j = 0; j < strlen(lines[i]); j++)
+        {
+            if (lines[i][j] == '\"')
+                lines[i][j] = '\'';
+        }
+        fprintf(f, "\"%s\\n\"\n", lines[i]);
+    }
+    fprintf(f, ";\n// End embedded app.html\n");
+}
+
 char *format(char *fmt, ...)
 {
     static char buffer[1024*1024];
@@ -97,6 +117,8 @@ int main(int argc, char **argv)
     FILE *f = fopen(format("%svdb_release.h", cwd), "w");
     concatenate_file(format("%svdb.h", cwd), f);
     fprintf(f, "\n");
+    fprintf(f, "#define VDB_RELEASE\n\n");
     concatenate_file(format("%svdb.c", cwd), f);
+    embed_html(format("%sapp.html", cwd), f);
     fclose(f);
 }

@@ -109,7 +109,6 @@ int vdb_recv_thread()
             if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
             {
                 static char http_response[1024*1024];
-                const char *content = "<html>In the future I'll also send the vdb application to you over the browser.<br>For now, you need to open the app.html file in your browser.</html>";
 
                 // If we failed to generate a handshake, it means that either
                 // we did something wrong, or the browser did something wrong,
@@ -120,8 +119,8 @@ int vdb_recv_thread()
                     "Content-Length: %d\r\n"
                     "Content-Type: text/html\r\n"
                     "Connection: Closed\r\n\r\n%s",
-                    (int)strlen(content),
-                    content
+                    (int)strlen(vdb_html_page),
+                    vdb_html_page
                     );
 
                 vdb_log("Failed to generate handshake. Sending HTML page.\n");

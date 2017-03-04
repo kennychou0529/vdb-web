@@ -136,6 +136,14 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
     dst->chars[VDB_LABEL_LENGTH] = 0;
 }
 
+#ifdef VDB_RELEASE
+// This variable will be defined at the bottom of the concatenated header file
+// upon running the make_release_lib program.
+extern const char *vdb_html_page;
+#else
+const char *vdb_html_page = "<html>You must use the release version of vdb to get the app delivered in your browser.<br>Open app.html in the vdb directory.</html>";
+#endif
+
 #include "tcp.c"
 #include "websocket.c"
 #include "vdb_handle_message.c"
