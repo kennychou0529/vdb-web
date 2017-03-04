@@ -128,5 +128,6 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
 #include "tcp.c"
 #include "websocket.c"
 #include "vdb_network_threads.c"
+#include "vdb_push_buffer.c"
 #include "vdb_draw_commands.c"
 #include "vdb_begin_end.c"
