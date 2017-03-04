@@ -1,3 +1,18 @@
+Non-blocking sockets
+    @send:
+        block until there is data to be sent
+        while (remaining > 0)
+            block until socket is ready
+            remaining -= send(...)
+
+    @recv:
+        vdb_begin:
+            while (tcp_recv(buf+pos)) { pos += n }
+
+Async io
+    vdb_begin:
+
+
 inspiration
 o https://github.com/itchio/capsule
 o https://github.com/jonasmr/microprofile
@@ -7,6 +22,14 @@ before release:
 o use public domain sha1
 o remove _CRT_SECURE_NO_WARNINGS
     #define snprintf _snprintf
+o message accumulation
+    read bytes until length == payload length
+o process termination of linux
+    We might have to switch to a design where recv is done at vdb_begin
+    while send is done in the background. That way the send thread can
+    poll (or maybe get notified when the pipe is destroyed?) the parent
+    process. The recv thread could not do this, unless we use non-blocking
+    sockets...
 
 js:
     https://github.com/gasman/bonsai-c
@@ -113,19 +136,6 @@ o server/browser: Filter draw-calls by color!!
     Then, in the browser, we can filter by one color at a time.
     That won't really work if a point can support multiple lines??
 
-o What about views? Precompute on server?
-    vdb_xview(left, right) sets viewport in window
-    vdb_xrange(left, right) maps [left,right] to viewport edges
-
-    vdb_xview(-1,+1);
-    vdb_yview(-1,+1);
-    vdb_xrange(t_min, t_max);
-    vdb_yrange(r_min, r_max);
-    vdb_point(t, r);
-
-    How does this interact with user-controlled cameras?
-    And vdb_map??
-
 o Overlay views in browser?
 
 o browser: color linking
@@ -157,11 +167,6 @@ o server: send list of possible views and let browser filter
 o server: hton and ntoh
 o server: Receive large messages (accumulate, until FIN)
 
-o browser: user-defined interface sidebar
-o browser: SVG icons (https://material.io/icons/#ic_mode_comment)
-
-o browser: https://projects.lukehaas.me/css-loaders/
-
 o server:
     send_thread should be able to check if the work-buffer is ready to be sent
     (cause it might not have been signalled to be sent because send_thread was
@@ -171,9 +176,6 @@ o browser: Hide or show axes
 o browser: Set canvas width height programmatically?
 o browser: Pausing to inspect in stream mode
 o browser: Scroll back frames in history
-o browser: Equidistant projection
-o browser: Pinhole projection with Brown-Conrady distortion
-o browser: Dynamic line rendering (binary search, curvature)
 
 o server: namespaces
     namespace socket

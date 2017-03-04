@@ -7,10 +7,23 @@
 #ifndef VDB_HEADER_INCLUDE
 #define VDB_HEADER_INCLUDE
 
-// You can specify which port vdb uses to host the visualization by calling this
-// function before the first vdb_begin, or writing #define VDB_LISTEN_PORT port
-// before #including the implementation.
-int vdb_set_listen_port(int port);
+// STREAM MODE - Run a block of code without blocking the caller.
+// EXAMPLE -
+//     if (vdb_begin()) {
+//         vdb_point()
+//         vdb_end();
+//     }
+int  vdb_begin(); // Returns true if vdb is not already busy sending data
+void vdb_end();
+
+// LOOP MODE - Run a block of code at a specified framerate until
+// we receive a 'continue' signal from the client.
+// EXAMPLE -
+//     while (vdb_loop(60)) {
+//         static float t = 0.0f; t += 1.0f/60.0f;
+//         vdb_point(cosf(t), sinf(t));
+//     }
+int vdb_loop(int fps);
 
 // These functions assign a RGB color to all subsequent draw calls
 // The ramp functions will map the input to a smooth gradient, while
