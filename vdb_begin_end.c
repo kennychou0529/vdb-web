@@ -1,5 +1,3 @@
-// vdb_begin_end.c
-
 int vdb_begin()
 {
     if (!vdb_shared)

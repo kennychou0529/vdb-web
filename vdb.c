@@ -27,9 +27,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "tcp.c"
-#include "websocket.c"
-
 // Draw commands are stored in a work buffer that is allocated
 // once on the first vdb_begin call, and stays a fixed size that
 // is given below in number-of-bytes. If you are memory constrained,
@@ -128,6 +125,8 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
     dst->chars[VDB_LABEL_LENGTH] = 0;
 }
 
+#include "tcp.c"
+#include "websocket.c"
 #include "vdb_network_threads.c"
 #include "vdb_draw_commands.c"
 #include "vdb_begin_end.c"
