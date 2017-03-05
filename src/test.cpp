@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-
-
 int main()
 {
     const int width = 8;
@@ -20,6 +18,11 @@ int main()
         image[(x + y*width)*3+0] = (x % 64)*8 + 100;
         image[(x + y*width)*3+1] = (y % 64)*8 + 100;
         image[(x + y*width)*3+2] = 128;
+    }
+
+    while (vdb_loop(60))
+    {
+        vdb_imageRGB8(image, width, height);
     }
 
     while (vdb_loop(60))
@@ -70,21 +73,5 @@ int main()
         vdb_setNicePoints(1);
     }
 
-    // while (vdb_loop(30))
-    // {
-    //     static float t = 0.0f;
-    //     t += 1.0f/30.0f;
-    //     vdb_imageRGB8(image, width, height);
-    //     vdb_translucent();
-    //     vdb_color(0);
-    //     vdb_point(sinf(t), cosf(t));
-    // }
-
-    while (vdb_loop(60))
-    {
-        vdb_color_white(0);
-        vdb_fillRect(-1,-1,2,2);
-        draw_cool_spinny_thing(1.0f/60.0f);
-    }
     return 0;
 }
