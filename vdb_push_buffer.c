@@ -1,4 +1,3 @@
-
 // Reserve 'count' number of bytes in the work buffer and optionally
 // initialize their values to 'data', if 'data' is not NULL. Returns
 // a pointer to the beginning of the reserved memory if there was

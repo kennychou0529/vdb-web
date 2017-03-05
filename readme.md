@@ -31,13 +31,14 @@ The second mode is the begin/end block which submits draw commands without halti
         while (recv_camera()) {
             // ... do your work
 
-            vdb_begin();
-            // visualize output
-            vdb_end();
+            if (vdb_begin()) { // can we draw stuff?
+                // visualize output
+                vdb_end();
+            }
         }
     }
 
-The browser would then receive the visualizations as they arrive, the rate of which is determined by how fast you call begin/end. vdb_begin will return false (0) if the network thread is already busy sending data, so you can use that to optimize your program if you are doing some complicated work inside the begin/end block.
+The browser would then receive the visualizations as they arrive, the rate of which is determined by how fast you call begin/end.
 
 ## Developing
 
