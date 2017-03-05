@@ -4,6 +4,11 @@ A single-header file C/C++ library for writing visualizations and quick interact
 
 The latest release version can be found in the `demo` directory, along with a couple of fun visualizations that you can inspire from.
 
+## Screenshots
+
+![](img/demo1.png)
+![](img/demo2.png)
+
 ## How it works
 
 Your interface is a set of draw commands that you can submit in your application (the host). These are sent to the browser (the client) using Websockets, and rendered using WebGL and Javascript. Here is a simple example program demonstrating the loop mode:
