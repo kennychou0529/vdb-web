@@ -64,18 +64,19 @@ void project_equidistant(float f, float u0, float v0,
 
 int main()
 {
-    float f  = 493.9999f;
-    float u0 = 649.3241f;
-    float v0 = 334.5365f;
+    float f  = 493.9999f; // 'focal length'
+    float u0 = 649.3241f; // optical center in x
+    float v0 = 334.5365f; // optical center in y (measured from top!)
     float w  = 1280.0f;
     float h  = 720.0f;
+
     while (vdb_loop(60))
     {
         static float len = 0.05f; vdb_slider1f("arrow length", &len, 0.01f, 0.1f);
         static float dx = 0.0f;   vdb_slider1f("dx", &dx, -1.5f, +1.5f);
         static float dy = 0.0f;   vdb_slider1f("dy", &dy, -1.5f, +1.5f);
         static float dz = 0.0f;   vdb_slider1f("dz", &dz, -1.5f, +1.5f);
-        static   int  n = 8;      vdb_slider1i("bananas", &n, 1, 16);
+        static int n = 8;         vdb_slider1i("bananas", &n, 1, 16);
 
         vdb_setNicePoints(1);
         vdb_setPointSize(3.0f);
@@ -93,19 +94,20 @@ int main()
             float z = -1.0f + dz;
 
             float u,v;
-            float dudx,dudy,dudz;
-            float dvdx,dvdy,dvdz;
+            float dudx,dudy,dudz; // derivative of u with respect to x,y,z
+            float dvdx,dvdy,dvdz; // derivative of v with respect to x,y,z
             project_equidistant(f,u0,v0, x,y,z, &u,&v, &dudx,&dudy,&dudz,&dvdx,&dvdy,&dvdz);
 
             vdb_color_black(2);
             vdb_point(u,v);
 
+            // draw how the projected point u,v will move if we change...
             vdb_color_red(1);
-            vdb_line(u,v, u+len*dudx,v+len*dvdx);
+            vdb_line(u,v, u+len*dudx,v+len*dvdx); // dx
             vdb_color_green(1);
-            vdb_line(u,v, u+len*dudy,v+len*dvdy);
+            vdb_line(u,v, u+len*dudy,v+len*dvdy); // dy
             vdb_color_blue(1);
-            vdb_line(u,v, u+len*dudz,v+len*dvdz);
+            vdb_line(u,v, u+len*dudz,v+len*dvdz); // dz
         }
     }
 }
