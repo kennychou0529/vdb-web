@@ -60,6 +60,37 @@ int vdb_send_thread()
 DWORD WINAPI vdb_win_send_thread(void *vdata) { (void)(vdata); return vdb_send_thread(); }
 #endif
 
+int vdb_strcmpn(const char *a, const char *b, int len)
+{
+    int i;
+    for (i = 0; i < len; i++)
+        if (a[i] != b[i])
+            return 0;
+    return 1;
+}
+
+int vdb_is_http_request(const char *str, int len)
+{
+    // First three characters must be "GET"
+    const char *s = "GET";
+    int n = (int)strlen(s);
+    if (len >= n && vdb_strcmpn(str, s, n))
+        return 1;
+    return 0;
+}
+
+int vdb_is_websockets_request(const char *str, int len)
+{
+    // "Upgrade: websocket" must occur somewhere
+    const char *s = "websocket";
+    int n = (int)strlen(s);
+    int i = 0;
+    for (i = 0; i < len - n; i++)
+        if (vdb_strcmpn(str + i, s, n))
+            return 1;
+    return 0;
+}
+
 int vdb_recv_thread()
 {
     vdb_shared_t *vs = vdb_shared;
@@ -77,7 +108,7 @@ int vdb_recv_thread()
             vdb_log("Creating listen socket\n");
             if (!tcp_listen(VDB_LISTEN_PORT))
             {
-                vdb_log("listen failed\n");
+                vdb_log("Failed to create socket on port %d\n", VDB_LISTEN_PORT);
                 vdb_sleep(1000);
                 continue;
             }
@@ -96,24 +127,33 @@ int vdb_recv_thread()
         {
             char *response;
             int response_len;
+            int is_http_request;
+            int is_websocket_request;
             vdb_log("Waiting for handshake\n");
             if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes))
             {
-                vdb_log("lost connection during handshake\n");
+                vdb_log("Lost connection during handshake\n");
                 tcp_shutdown();
                 vdb_sleep(1000);
                 continue;
             }
 
-            vdb_log("Generating handshake\n");
-            if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
+
+            is_http_request = vdb_is_http_request(vs->recv_buffer, read_bytes);
+            is_websocket_request = vdb_is_websockets_request(vs->recv_buffer, read_bytes);
+
+            if (!is_http_request)
+            {
+                vdb_log("Got an invalid HTTP request while waiting for handshake\n");
+                tcp_shutdown();
+                vdb_sleep(1000);
+                continue;
+            }
+
+            // If it was not a websocket HTTP request we will send the HTML page
+            if (!is_websocket_request)
             {
                 static char http_response[1024*1024];
-
-                // If we failed to generate a handshake, it means that either
-                // we did something wrong, or the browser did something wrong,
-                // or the request was an ordinary HTTP request. If the latter
-                // we'll send an HTTP response containing the vdb.html page.
                 int len = sprintf(http_response,
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Length: %d\r\n"
@@ -123,7 +163,7 @@ int vdb_recv_thread()
                     vdb_html_page
                     );
 
-                vdb_log("Failed to generate handshake. Sending HTML page.\n");
+                vdb_log("Sending HTML page.\n");
                 if (!tcp_sendall(http_response, len))
                 {
                     vdb_log("Lost connection while sending HTML page\n");
@@ -139,10 +179,20 @@ int vdb_recv_thread()
                 continue;
             }
 
-            vdb_log("Sending handshake\n");
+            // Otherwise we will set up the Websockets connection
+            vdb_log("Generating WebSockets key\n");
+            if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
+            {
+                vdb_log("Failed to generate WebSockets handshake key. Retrying.\n");
+                tcp_shutdown();
+                vdb_sleep(1000);
+                continue;
+            }
+
+            vdb_log("Sending WebSockets handshake\n");
             if (!tcp_sendall(response, response_len))
             {
-                vdb_log("Failed to send handshake\n");
+                vdb_log("Connection went down while setting up WebSockets connection. Retrying.\n");
                 tcp_shutdown();
                 vdb_sleep(1000);
                 continue;

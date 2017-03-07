@@ -18,8 +18,8 @@
 // running -
 //        Open your browser and direct it to 127.0.0.1:8000
 
-#include <math.h>
 #include "vdb_release.h"
+#include <math.h>
 
 void project_equidistant(float f, float u0, float v0,
                          float x, float y, float z,
