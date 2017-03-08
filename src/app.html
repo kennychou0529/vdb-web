@@ -112,7 +112,8 @@ var vdb_variables_step  = new Array(vdb_max_variables);
 var vdb_variables_used = 0;
 
 // User interface
-var connection_address = "localhost:8000";
+var connection_address = window.location.host;
+// var connection_address = "localhost:8000";
 var html_connection_address = null;
 var html_status = null;
 var html_button_connect = null;

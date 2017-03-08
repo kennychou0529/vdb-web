@@ -140,8 +140,18 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
 // This variable will be defined at the bottom of the concatenated header file
 // upon running the make_release_lib program.
 extern const char *vdb_html_page;
+const char *get_vdb_html_page() { return vdb_html_page; }
 #else
-const char *vdb_html_page = "<html>You must use the release version of vdb to get the app delivered in your browser.<br>Open app.html in the vdb directory.</html>";
+// If we are not the release version, we will load app.html from disk and serve that
+const char *get_vdb_html_page()
+{
+    static char static_buffer[1024*1024];
+    FILE *file = fopen("../app.html", "rb"); // @ todo: robust file reading
+    vdb_assert(file);
+    fread(static_buffer, 1, 1024*1024, file); // @ todo: robust file reading
+    fclose(file);
+    return static_buffer;
+}
 #endif
 
 #include "tcp.c"

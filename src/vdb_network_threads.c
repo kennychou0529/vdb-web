@@ -153,15 +153,14 @@ int vdb_recv_thread()
             // If it was not a websocket HTTP request we will send the HTML page
             if (!is_websocket_request)
             {
+                const char *content = get_vdb_html_page();
                 static char http_response[1024*1024];
                 int len = sprintf(http_response,
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Length: %d\r\n"
                     "Content-Type: text/html\r\n"
                     "Connection: Closed\r\n\r\n%s",
-                    (int)strlen(vdb_html_page),
-                    vdb_html_page
-                    );
+                    (int)strlen(content), content);
 
                 vdb_log("Sending HTML page.\n");
                 if (!tcp_sendall(http_response, len))
