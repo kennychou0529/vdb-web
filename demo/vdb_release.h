@@ -482,7 +482,7 @@ typedef struct
 } vdb_msg_t;
 int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length);
 int vdb_self_test();
-void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
+void vdb_form_frame(int length, int opcode, unsigned char **out_frame, int *out_length);
 int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
@@ -799,14 +799,16 @@ void vdb_print_bytes(void *recv_buffer, int n)
     }
 }
 
-void vdb_form_frame(int length, unsigned char **out_frame, int *out_length)
+// opcode = 0x2 for binary data
+// opcode = 0x8 for closing handshakes
+void vdb_form_frame(int length, int opcode, unsigned char **out_frame, int *out_length)
 {
     static unsigned char frame[16] = {0};
     int frame_length = 0;
     {
         // fin rsv1 rsv2 rsv3 opcode
-        // 1   0    0    0    0010
-        frame[0] = 0x82;
+        // 1   0    0    0     xxxx
+        frame[0] = (1 << 7) | (opcode & 0xF);
         if (length <= 125)
         {
             frame[1] = (unsigned char)(length & 0xFF);
@@ -916,12 +918,18 @@ int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg)
 
 // Begin auto-include vdb_handle_message.c
 
+// This is used by vdb_recv_thread (vdb_network_threads.c) whenever
+// we get a valid message from the client. The client periodically
+// sends status updates at a fixed rate, and some asynchronous events
+// (like mouse clicks and button presses).
+
 // Returns true (1) if we successfully parsed the message
 // or if we did not recognize it. Returns false (0) if something
 // unexpected happened while parsing the message.
 int vdb_handle_message(vdb_msg_t msg, vdb_status_t *status)
 {
     vdb_status_t new_status = *status;
+
     // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
     // This means the user pressed the 'continue' button
     if (msg.length == 1 && msg.payload[0] == 'c')
@@ -1021,8 +1029,8 @@ int vdb_send_thread()
         // blocking until data is signalled ready from main thread
         vdb_critical(vdb_wait_data_ready());
 
-        // send frame header
-        vdb_form_frame(vs->bytes_to_send, &frame, &frame_len);
+        // send frame header (0x2 indicating binary data)
+        vdb_form_frame(vs->bytes_to_send, 0x2, &frame, &frame_len);
         if (!tcp_sendall(frame, frame_len))
         {
             vdb_log("Failed to send frame\n");
@@ -1216,6 +1224,7 @@ int vdb_recv_thread()
             vs->has_send_thread = 1;
         }
         #endif
+
         if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes)) // @ INCOMPLETE: Assemble frames
         {
             vdb_log("Connection went down\n");
@@ -1239,6 +1248,16 @@ int vdb_recv_thread()
         if (!msg.fin)
         {
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
+            continue;
+        }
+        if (msg.opcode == 0x8) // closing handshake
+        {
+            unsigned char *frame = 0;
+            int frame_len = 0;
+            vdb_log("Client voluntarily disconnected\n");
+            vdb_form_frame(0, 0x8, &frame, &frame_len);
+            if (!tcp_sendall(frame, frame_len))
+                vdb_log("Failed to send closing handshake\n");
             continue;
         }
         if (!vdb_handle_message(msg, &vs->status))
@@ -2280,7 +2299,11 @@ const char *vdb_html_page =
 "            var value = vdb_variables_value[i];\n"
 "            status = status + ' ' + label + ' ' + value;\n"
 "        }\n"
-"        ws.send(status);\n"
+"        try {\n"
+"            ws.send(status);\n"
+"        } catch (error) {\n"
+"            console.log(error);\n"
+"        }\n"
 "    }\n"
 "\n"
 "    requestAnimationFrame(anim);\n"

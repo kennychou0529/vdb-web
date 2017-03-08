@@ -10,6 +10,7 @@ o Is it possible to terminate without terminating the recv/send procs?
     - CtrlC and the like are handled by sharing the signal handlers...?
 
 release quality:
+o Character encoding of html document
 o remove _CRT_SECURE_NO_WARNINGS
     #define snprintf _snprintf
 o message accumulation

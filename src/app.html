@@ -593,7 +593,11 @@ function anim(t)
             var value = vdb_variables_value[i];
             status = status + " " + label + " " + value;
         }
-        ws.send(status);
+        try {
+            ws.send(status);
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     requestAnimationFrame(anim);
