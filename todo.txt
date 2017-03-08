@@ -24,6 +24,9 @@ o ensure that if vdb_begin returns 0, draw calls are invalidated
     and optionally *ask* if we are busy, if we want to do something with that info.
 o detect endianness at runtime?
 
+o browser does not immediately close connection
+    detect missing status pings and close connection
+
 js:
     https://github.com/gasman/bonsai-c
     http://babeljs.io/

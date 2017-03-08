@@ -218,8 +218,18 @@ void vdb_copy_label(vdb_label_t *dst, const char *src)
 // This variable will be defined at the bottom of the concatenated header file
 // upon running the make_release_lib program.
 extern const char *vdb_html_page;
+const char *get_vdb_html_page() { return vdb_html_page; }
 #else
-const char *vdb_html_page = "<html>You must use the release version of vdb to get the app delivered in your browser.<br>Open app.html in the vdb directory.</html>";
+// If we are not the release version, we will load app.html from disk and serve that
+const char *get_vdb_html_page()
+{
+    static char static_buffer[1024*1024];
+    FILE *file = fopen("../app.html", "rb"); // @ todo: robust file reading
+    vdb_assert(file);
+    fread(static_buffer, 1, 1024*1024, file); // @ todo: robust file reading
+    fclose(file);
+    return static_buffer;
+}
 #endif
 
 
@@ -1132,15 +1142,14 @@ int vdb_recv_thread()
             // If it was not a websocket HTTP request we will send the HTML page
             if (!is_websocket_request)
             {
+                const char *content = get_vdb_html_page();
                 static char http_response[1024*1024];
                 int len = sprintf(http_response,
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Length: %d\r\n"
                     "Content-Type: text/html\r\n"
                     "Connection: Closed\r\n\r\n%s",
-                    (int)strlen(vdb_html_page),
-                    vdb_html_page
-                    );
+                    (int)strlen(content), content);
 
                 vdb_log("Sending HTML page.\n");
                 if (!tcp_sendall(http_response, len))
@@ -1790,7 +1799,8 @@ const char *vdb_html_page =
 "var vdb_variables_used = 0;\n"
 "\n"
 "// User interface\n"
-"var connection_address = 'localhost:8000';\n"
+"var connection_address = window.location.host;\n"
+"// var connection_address = 'localhost:8000';\n"
 "var html_connection_address = null;\n"
 "var html_status = null;\n"
 "var html_button_connect = null;\n"
