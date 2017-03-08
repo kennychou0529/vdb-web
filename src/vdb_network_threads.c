@@ -32,8 +32,8 @@ int vdb_send_thread()
         // blocking until data is signalled ready from main thread
         vdb_critical(vdb_wait_data_ready());
 
-        // send frame header
-        vdb_form_frame(vs->bytes_to_send, &frame, &frame_len);
+        // send frame header (0x2 indicating binary data)
+        vdb_form_frame(vs->bytes_to_send, 0x2, &frame, &frame_len);
         if (!tcp_sendall(frame, frame_len))
         {
             vdb_log("Failed to send frame\n");
@@ -227,6 +227,7 @@ int vdb_recv_thread()
             vs->has_send_thread = 1;
         }
         #endif
+
         if (!tcp_recv(vs->recv_buffer, VDB_RECV_BUFFER_SIZE, &read_bytes)) // @ INCOMPLETE: Assemble frames
         {
             vdb_log("Connection went down\n");
@@ -250,6 +251,16 @@ int vdb_recv_thread()
         if (!msg.fin)
         {
             vdb_log("Got an incomplete message (%d): '%s'\n", msg.length, msg.payload);
+            continue;
+        }
+        if (msg.opcode == 0x8) // closing handshake
+        {
+            unsigned char *frame = 0;
+            int frame_len = 0;
+            vdb_log("Client voluntarily disconnected\n");
+            vdb_form_frame(0, 0x8, &frame, &frame_len);
+            if (!tcp_sendall(frame, frame_len))
+                vdb_log("Failed to send closing handshake\n");
             continue;
         }
         if (!vdb_handle_message(msg, &vs->status))

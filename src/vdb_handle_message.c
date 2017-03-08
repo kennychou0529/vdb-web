@@ -1,10 +1,16 @@
 
+// This is used by vdb_recv_thread (vdb_network_threads.c) whenever
+// we get a valid message from the client. The client periodically
+// sends status updates at a fixed rate, and some asynchronous events
+// (like mouse clicks and button presses).
+
 // Returns true (1) if we successfully parsed the message
 // or if we did not recognize it. Returns false (0) if something
 // unexpected happened while parsing the message.
 int vdb_handle_message(vdb_msg_t msg, vdb_status_t *status)
 {
     vdb_status_t new_status = *status;
+
     // vdb_log("Got a message (%d): '%s'\n", msg.length, msg.payload);
     // This means the user pressed the 'continue' button
     if (msg.length == 1 && msg.payload[0] == 'c')

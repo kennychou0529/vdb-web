@@ -10,7 +10,7 @@ typedef struct
 } vdb_msg_t;
 int vdb_generate_handshake(const char *request, int request_len, char **out_response, int *out_length);
 int vdb_self_test();
-void vdb_form_frame(int length, unsigned char **out_frame, int *out_length);
+void vdb_form_frame(int length, int opcode, unsigned char **out_frame, int *out_length);
 int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
@@ -155,14 +155,16 @@ void vdb_print_bytes(void *recv_buffer, int n)
     }
 }
 
-void vdb_form_frame(int length, unsigned char **out_frame, int *out_length)
+// opcode = 0x2 for binary data
+// opcode = 0x8 for closing handshakes
+void vdb_form_frame(int length, int opcode, unsigned char **out_frame, int *out_length)
 {
     static unsigned char frame[16] = {0};
     int frame_length = 0;
     {
         // fin rsv1 rsv2 rsv3 opcode
-        // 1   0    0    0    0010
-        frame[0] = 0x82;
+        // 1   0    0    0     xxxx
+        frame[0] = (1 << 7) | (opcode & 0xF);
         if (length <= 125)
         {
             frame[1] = (unsigned char)(length & 0xFF);
