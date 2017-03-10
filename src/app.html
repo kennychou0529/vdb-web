@@ -25,6 +25,12 @@ body {
     height: 320px;
 }
 
+#canvas_text {
+    position: absolute;
+    z-index: 10;
+    top: 12px;
+}
+
 #container {
     min-width: 400px;
     width: 60%;
@@ -78,6 +84,9 @@ a:active { background: #dd7766; }
 var ws = null;
 var has_connection = false;
 var cmd_data = null;
+
+var ctx_text = null;
+var cvs_text = null;
 
 var cvs = null;
 var gl = null;
@@ -572,7 +581,21 @@ function anim(t)
     {
         draw();
 
-        // html_fps.innerHTML = "FPS: " + (1.0/delta).toPrecision(4);
+        // Draw 2D text
+        // {
+        //     if (cvs_text.width  != cvs.clientWidth || cvs_text.height != cvs.clientHeight)
+        //     {
+        //         cvs_text.width  = cvs.clientWidth;
+        //         cvs_text.height = cvs.clientHeight;
+        //     }
+
+        //     ctx_text.font = "14px Times";
+        //     ctx_text.clearRect(0, 0, ctx_text.canvas.width, ctx_text.canvas.height);
+        //     var s = "FPS: " + (1.0/delta).toPrecision(4);
+        //     ctx_text.fillStyle = "white";
+        //     ctx_text.fillText(s, 0.0, 16.0);
+        // }
+
         stats_bps_dt += delta;
 
         for (var i = 0; i < vdb_variables_used; i++)
@@ -742,10 +765,12 @@ function pageload()
         return;
     }
 
+    cvs_text = document.getElementById("canvas_text");
+    ctx_text = cvs_text.getContext("2d");
+
     html_connection_address = document.getElementById("connection_address");
     html_status = document.getElementById("status");
     html_button_connect = document.getElementById("button_connect");
-    // html_fps = document.getElementById("fps");
 
     html_connection_address.value = connection_address;
     html_status.hidden = true;
@@ -810,6 +835,7 @@ function buttonContinue()
 <body onload="pageload()">
     <div id="container">
         <canvas id="canvas"></canvas>
+        <canvas id="canvas_text"></canvas>
 
         <a id="button_continue" href="javascript:buttonContinue()">Continue</a>
 
