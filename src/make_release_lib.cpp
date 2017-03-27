@@ -7,6 +7,7 @@
 
 char *read_all(char *filename)
 {
+    printf("opening %s\n", filename);
     FILE *f = fopen(filename, "rb");
     assert(f);
     fseek(f, 0, SEEK_END); int n = ftell(f);
@@ -42,7 +43,7 @@ char **read_lines(char *filename, int *out_n)
 int is_include(char *ptr, char **name)
 {
     static char buf[1024];
-    char *cmp = "#include \"";
+    const char *cmp = "#include \"";
     int n = strlen(cmp);
     for (int i = 0; i < n; i++)
     {
@@ -101,24 +102,13 @@ void embed_html(char *filename, FILE *f)
     fprintf(f, ";\n// End embedded app.html\n");
 }
 
-char *format(char *fmt, ...)
-{
-    static char buffer[1024*1024];
-    va_list args;
-    va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
-    va_end(args);
-    return buffer;
-}
-
 int main(int argc, char **argv)
 {
-    char *cwd = (argc > 1) ? argv[1] : "";
-    FILE *f = fopen(format("%svdb_release.h", cwd), "w");
-    concatenate_file(format("%svdb.h", cwd), f);
+    FILE *f = fopen("vdb_release.h", "w");
+    concatenate_file("vdb.h", f);
     fprintf(f, "\n");
     fprintf(f, "#define VDB_RELEASE\n\n");
-    concatenate_file(format("%svdb.c", cwd), f);
-    embed_html(format("%sapp.html", cwd), f);
+    concatenate_file("vdb.c", f);
+    embed_html("app.html", f);
     fclose(f);
 }
