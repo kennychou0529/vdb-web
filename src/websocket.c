@@ -14,7 +14,8 @@ void vdb_form_frame(int length, int opcode, unsigned char **out_frame, int *out_
 int vdb_parse_message(void *recv_buffer, int received, vdb_msg_t *msg);
 
 // implementation
-#include "sha1.c"
+#define MBEDTLS_SHA1_C
+#include "sha1.c" // @ replace https://tools.ietf.org/html/rfc3174#page-10
 
 int vdb_extract_user_key(const char *request, int request_len, char *key)
 {
@@ -74,7 +75,7 @@ int vdb_generate_accept_key(const char *request, int request_len, char *accept_k
     {
         // Compute sha1 hash
         unsigned char sha1[20];
-        vdb_sha1(new_key, (unsigned int)new_len, sha1);
+        mbedtls_sha1(new_key, (size_t)new_len, sha1);
 
         // Convert to base64 null-terminated string
         {
@@ -107,7 +108,7 @@ int vdb_generate_handshake(const char *request, int request_len, char **out_resp
         "Sec-WebSocket-Accept: ";
     const char *header2 = "\r\n\r\n";
     char accept_key[1024];
-    char response[1024];
+    static char response[1024];
     int response_len = 0;
     size_t i = 0;
 
