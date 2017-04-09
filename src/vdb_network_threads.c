@@ -125,8 +125,6 @@ int vdb_recv_thread()
         }
         if (!vs->has_connection)
         {
-            char *response;
-            int response_len;
             int is_http_request;
             int is_websocket_request;
             vdb_log("Waiting for handshake\n");
@@ -137,7 +135,6 @@ int vdb_recv_thread()
                 vdb_sleep(1000);
                 continue;
             }
-
 
             is_http_request = vdb_is_http_request(vs->recv_buffer, read_bytes);
             is_websocket_request = vdb_is_websockets_request(vs->recv_buffer, read_bytes);
@@ -179,25 +176,30 @@ int vdb_recv_thread()
             }
 
             // Otherwise we will set up the Websockets connection
-            vdb_log("Generating WebSockets key\n");
-            if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
             {
-                vdb_log("Failed to generate WebSockets handshake key. Retrying.\n");
-                tcp_shutdown();
-                vdb_sleep(1000);
-                continue;
-            }
+                char *response;
+                int response_len;
 
-            vdb_log("Sending WebSockets handshake\n");
-            if (!tcp_sendall(response, response_len))
-            {
-                vdb_log("Connection went down while setting up WebSockets connection. Retrying.\n");
-                tcp_shutdown();
-                vdb_sleep(1000);
-                continue;
-            }
+                vdb_log("Generating WebSockets key\n");
+                if (!vdb_generate_handshake(vs->recv_buffer, read_bytes, &response, &response_len))
+                {
+                    vdb_log("Failed to generate WebSockets handshake key. Retrying.\n");
+                    tcp_shutdown();
+                    vdb_sleep(1000);
+                    continue;
+                }
 
-            vs->has_connection = 1;
+                vdb_log("Sending WebSockets handshake\n");
+                if (!tcp_sendall(response, response_len))
+                {
+                    vdb_log("Connection went down while setting up WebSockets connection. Retrying.\n");
+                    tcp_shutdown();
+                    vdb_sleep(1000);
+                    continue;
+                }
+
+                vs->has_connection = 1;
+            }
         }
         #ifdef VDB_UNIX
         // The send thread is allowed to return on unix, because if the connection
