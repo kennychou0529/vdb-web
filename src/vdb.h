@@ -1,5 +1,6 @@
-// vdb - Version 3
+// vdb - Version 4
 // Changelog
+// (4) Fixed stack-smashing bug on linux by reverting to ARM mbed SHA1
 // (3) Float and int sliders and checkboxes
 // (2) Message passing from browser to vdb
 // (1) Works on unix and windows
